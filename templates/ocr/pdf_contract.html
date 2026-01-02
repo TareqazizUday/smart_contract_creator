@@ -1,0 +1,497 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced OCR System - SignifyAI</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.3/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .main-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .content-area {
+            padding: 30px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .processing-spinner {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        #results-section {
+            display: none;
+        }
+
+        .image-preview {
+            max-width: 100%;
+            max-height: 500px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .page-result {
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 12px 20px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .page-content {
+            padding: 20px;
+        }
+
+        .page-textarea {
+            width: 100%;
+            min-height: 200px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+        
+        .page-textarea:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+
+        .copy-btn {
+            margin-top: 10px;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            font-weight: 600;
+            padding: 15px 20px;
+        }
+        
+        .card-body {
+            padding: 25px;
+        }
+        
+        .form-control, .form-select {
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 12px 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 12px 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-success {
+            border-radius: 10px;
+            padding: 12px 25px;
+            font-weight: 600;
+        }
+        
+        .btn-outline-primary {
+            border-radius: 8px;
+            border-width: 2px;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .toast-message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            z-index: 9999;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .action-buttons .btn {
+            flex: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="main-container">
+        <div class="header">
+            <h1><i class="fas fa-eye"></i> Advanced OCR System</h1>
+            <p class="mb-0">Extract text from images and PDFs using AI vision</p>
+        </div>
+        
+        <div class="content-area">
+            <div class="row">
+                <div class="col-md-5">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-upload"></i> Upload & Settings
+                        </div>
+                        <div class="card-body">
+                            <form id="ocr-form" enctype="multipart/form-data">
+                                {% csrf_token %}
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">File Type</label>
+                                    <div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="file_type" id="image-radio"
+                                                value="image" checked>
+                                            <label class="form-check-label" for="image-radio">Image</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="file_type" id="pdf-radio"
+                                                value="pdf">
+                                            <label class="form-check-label" for="pdf-radio">PDF</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="file" class="form-label">Upload File</label>
+                                    <input type="file" class="form-control" id="file" name="file"
+                                        accept=".jpg,.jpeg,.png,.pdf" required>
+                                </div>
+
+                                <div class="mb-3 pdf-options hidden">
+                                    <label class="form-label">PDF Page Selection</label>
+                                    <div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="page_selection"
+                                                id="specific-page" value="specific" checked>
+                                            <label class="form-check-label" for="specific-page">Specific Page</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="page_selection"
+                                                id="all-pages" value="all">
+                                            <label class="form-check-label" for="all-pages">All Pages</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3 page-number-input hidden">
+                                    <label for="specific_page" class="form-label">Specific Page Number</label>
+                                    <input type="number" class="form-control" id="specific_page" name="specific_page"
+                                        value="1" min="1">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="prompt_template" class="form-label">OCR Prompt Template</label>
+                                    <textarea class="form-control" id="prompt_template" name="prompt_template" rows="6">Extract ALL text from this image exactly as it appears. 
+Preserve the original structure, formatting, headings, paragraphs, and layout.
+Pay special attention to:
+1. Fixing any OCR errors or misspelled words
+2. Correcting misrecognized characters
+3. Preserving the original formatting where possible
+4. Handling any unclear text based on context
+
+Return only the corrected text without any explanations.</textarea>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-magic"></i> Process File
+                                </button>
+                            </form>
+                            
+                            <hr class="my-4">
+                            
+                            <!-- Translation Section -->
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-language"></i> Translate Result
+                                </label>
+                                <select id="translate-language" class="form-select">
+                                    <option value="">Select language...</option>
+                                    <option value="Bengali">🇧🇩 Bengali (বাংলা)</option>
+                                    <option value="Hindi">🇮🇳 Hindi (हिन्दी)</option>
+                                    <option value="Arabic">🇸🇦 Arabic (العربية)</option>
+                                    <option value="Spanish">🇪🇸 Spanish</option>
+                                    <option value="French">🇫🇷 French</option>
+                                </select>
+                            </div>
+                            <button type="button" id="translate-btn" class="btn btn-outline-primary w-100" disabled>
+                                <i class="fas fa-globe"></i> Translate Text
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-7">
+                    <div class="processing-spinner" id="processing-spinner">
+                        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                            <span class="visually-hidden">Processing...</span>
+                        </div>
+                        <p class="mt-3" style="color: #667eea; font-weight: 500;">
+                            Processing your file with AI vision...
+                        </p>
+                    </div>
+
+                    <div id="results-section">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <i class="fas fa-image"></i> Preview
+                            </div>
+                            <div class="card-body text-center">
+                                <img id="original-image" class="image-preview" src="" alt="Preview">
+                            </div>
+                        </div>
+
+                        <div id="ocr-results-container">
+                            <!-- Results will be inserted here -->
+                        </div>
+                    </div>
+
+                    <div id="error-message" class="alert alert-danger mt-3 hidden"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.3/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let extractedText = '';
+        
+        $(document).ready(function () {
+            // Toggle PDF options based on file type selection
+            $('input[name="file_type"]').change(function () {
+                if ($(this).val() === 'pdf') {
+                    $('.pdf-options').removeClass('hidden');
+                    updatePageNumberVisibility();
+                } else {
+                    $('.pdf-options').addClass('hidden');
+                    $('.page-number-input').addClass('hidden');
+                }
+            });
+
+            // Toggle page number input based on page selection
+            $('input[name="page_selection"]').change(function () {
+                updatePageNumberVisibility();
+            });
+            
+            function updatePageNumberVisibility() {
+                if ($('input[name="page_selection"]:checked').val() === 'specific') {
+                    $('.page-number-input').removeClass('hidden');
+                } else {
+                    $('.page-number-input').addClass('hidden');
+                }
+            }
+
+            // Copy text to clipboard function
+            function copyToClipboard(text) {
+                navigator.clipboard.writeText(text).then(function() {
+                    const toast = $('<div class="toast-message">Copied to clipboard!</div>');
+                    $('body').append(toast);
+                    setTimeout(function() {
+                        toast.fadeOut(300, function() { toast.remove(); });
+                    }, 2000);
+                });
+            }
+
+            // Handle form submission
+            $('#ocr-form').submit(function (e) {
+                e.preventDefault();
+
+                $('#processing-spinner').show();
+                $('#results-section').hide();
+                $('#error-message').addClass('hidden').text('');
+                $('#translate-btn').prop('disabled', true);
+
+                const formData = new FormData(this);
+
+                $.ajax({
+                    url: '{% url "ocr:process_file" %}',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (response) {
+                        $('#processing-spinner').hide();
+
+                        if (response.status === 'error') {
+                            $('#error-message').removeClass('hidden').text(response.message);
+                            return;
+                        }
+
+                        $('#results-section').show();
+                        
+                        if (response.preview_url) {
+                            $('#original-image').attr('src', response.preview_url);
+                        }
+                        
+                        $('#ocr-results-container').empty();
+                        extractedText = '';
+                        
+                        if (response.pages && Array.isArray(response.pages)) {
+                            response.pages.forEach(function(page, index) {
+                                extractedText += (index > 0 ? '\n\n--- PAGE ' + page.page_number + ' ---\n\n' : '') + page.text;
+                                
+                                const pageHtml = `
+                                    <div class="page-result">
+                                        <div class="page-header">
+                                            <i class="fas fa-file-alt"></i> Page ${page.page_number}
+                                        </div>
+                                        <div class="page-content">
+                                            <textarea class="page-textarea" readonly>${page.text}</textarea>
+                                            <button class="btn btn-sm btn-outline-primary copy-btn" data-page="${index}">
+                                                <i class="fas fa-copy"></i> Copy Page ${page.page_number}
+                                            </button>
+                                        </div>
+                                    </div>
+                                `;
+                                $('#ocr-results-container').append(pageHtml);
+                            });
+                        } else if (response.text) {
+                            extractedText = response.text;
+                            const pageHtml = `
+                                <div class="page-result">
+                                    <div class="page-header">
+                                        <i class="fas fa-file-alt"></i> OCR Result
+                                    </div>
+                                    <div class="page-content">
+                                        <textarea class="page-textarea" readonly>${response.text}</textarea>
+                                        <button class="btn btn-sm btn-outline-primary copy-btn">
+                                            <i class="fas fa-copy"></i> Copy Text
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                            $('#ocr-results-container').append(pageHtml);
+                        }
+                        
+                        // Enable translation button
+                        $('#translate-btn').prop('disabled', false);
+                        
+                        // Add click handlers for copy buttons
+                        $('.copy-btn').click(function() {
+                            const textarea = $(this).siblings('.page-textarea');
+                            copyToClipboard(textarea.val());
+                        });
+                    },
+                    error: function () {
+                        $('#processing-spinner').hide();
+                        $('#error-message').removeClass('hidden').text('Error communicating with server');
+                    }
+                });
+            });
+            
+            // Translate button
+            $('#translate-btn').click(function() {
+                const targetLang = $('#translate-language').val();
+                if (!targetLang || !extractedText) return;
+                
+                $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Translating...');
+                
+                $.ajax({
+                    url: '{% url "ocr:translate" %}',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        text: extractedText,
+                        target_language: targetLang
+                    }),
+                    success: function(response) {
+                        $('#translate-btn').prop('disabled', false).html('<i class="fas fa-globe"></i> Translate Text');
+                        
+                        if (response.status === 'success') {
+                            const translatedHtml = `
+                                <div class="page-result">
+                                    <div class="page-header">
+                                        <i class="fas fa-language"></i> Translated Text (${targetLang})
+                                    </div>
+                                    <div class="page-content">
+                                        <textarea class="page-textarea" readonly>${response.translated_text}</textarea>
+                                        <button class="btn btn-sm btn-outline-primary copy-btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.value)">
+                                            <i class="fas fa-copy"></i> Copy Translation
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                            $('#ocr-results-container').append(translatedHtml);
+                        } else {
+                            alert('Translation failed: ' + (response.message || 'Unknown error'));
+                        }
+                    },
+                    error: function() {
+                        $('#translate-btn').prop('disabled', false).html('<i class="fas fa-globe"></i> Translate Text');
+                        alert('Translation request failed');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

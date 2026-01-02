@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Django
+*.log
+db.sqlite3
+db.sqlite3-journal
+/media
+/staticfiles
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Uploads and results (user-generated content)
+/uploads/*
+!/uploads/.gitkeep
+/results/*
+!/results/.gitkeep
+
+# Keep directory structure but ignore contents
+!uploads/.gitkeep
+!results/.gitkeep
+
+# Temporary files
+*.tmp
+*.bak
+*.cache
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# Virtual Environment (if not in project root)
+venv/
+ENV/
+env/
+

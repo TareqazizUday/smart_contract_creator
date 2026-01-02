@@ -1,0 +1,48 @@
+# ============================================
+# SignifyAI - Smart Contract Creator
+# Python Dependencies
+# ============================================
+
+# Core Web Framework
+Django>=4.2.0,<5.0.0          # Web framework
+
+# AI/ML Services
+google-generativeai>=0.3.0    # Google Gemini API for contract generation
+openai>=1.0.0                 # OpenAI API for legal validation and web search
+
+# Document Processing
+PyMuPDF>=1.23.0               # PDF manipulation (import as fitz)
+Pillow>=10.0.0                # Image processing (PIL)
+pdf2image>=1.16.0             # Convert PDF pages to images
+
+# Text & Markup Processing
+markdown>=3.5.0               # Markdown to HTML conversion
+beautifulsoup4>=4.12.0        # HTML/XML parsing
+
+# HTTP & Utilities
+requests>=2.31.0              # HTTP library for API calls
+python-dotenv>=1.0.0          # Environment variable management
+
+# ============================================
+# System Dependencies (External)
+# ============================================
+# pdf2image requires poppler-utils:
+#   Windows: https://github.com/oschwartz10612/poppler-windows/releases
+#   Linux:   sudo apt-get install poppler-utils
+#   macOS:   brew install poppler
+
+# ============================================
+# Optional Dependencies
+# ============================================
+# Production WSGI Server
+# gunicorn>=21.2.0            # For production deployment (Linux/Mac)
+# waitress>=2.1.0             # For production deployment (Windows)
+
+# Database Drivers (if not using SQLite)
+# psycopg2-binary>=2.9.0      # PostgreSQL
+# mysqlclient>=2.2.0          # MySQL
+
+# Development Tools
+# django-debug-toolbar>=4.0.0 # Debugging
+# black>=23.0.0               # Code formatting
+# flake8>=6.0.0               # Linting

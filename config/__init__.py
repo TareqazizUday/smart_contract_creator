@@ -1,0 +1,1 @@
+# SignifyAI Django Configuration

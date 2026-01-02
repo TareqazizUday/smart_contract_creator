@@ -1,0 +1,1836 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Contract Creator - Create Legal Contracts Easily</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown-light.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 0;
+        }
+
+        .main-container {
+            max-width: 100%;
+            margin: 0;
+            background: white;
+            border-radius: 0;
+            box-shadow: none;
+            overflow: hidden;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content-wrapper {
+            display: block;
+            min-height: calc(100vh - 200px);
+        }
+
+        .sidebar {
+            background: #f8f9fa;
+            padding: 25px 50px;
+            width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            overflow: visible;
+        }
+
+        .sidebar.hidden {
+            display: none;
+        }
+
+        .content {
+            flex: 1;
+            padding: 30px 50px;
+            background: #ffffff;
+            overflow: visible;
+            display: none;
+        }
+
+        .content.visible {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 22px;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            display: block;
+            font-size: 0.95rem;
+        }
+
+        .form-label .required {
+            color: #dc3545;
+            margin-left: 3px;
+        }
+
+        .form-control, .form-select {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 13px 16px;
+            font-size: 0.98rem;
+            transition: all 0.3s ease;
+        }
+
+        textarea.form-control {
+            resize: none;
+            overflow: hidden;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            outline: none;
+        }
+
+        .form-control::placeholder {
+            color: #999;
+        }
+
+        textarea.form-control {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .file-upload-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-upload-label {
+            display: block;
+            padding: 15px;
+            background: #f8f9fa;
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .file-upload-label:hover {
+            background: #e9ecef;
+            border-color: #764ba2;
+        }
+
+        .file-upload-label i {
+            margin-right: 8px;
+            font-size: 1.2rem;
+        }
+
+        .file-upload-wrapper input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-name-display {
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: #e7f3ff;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #0066cc;
+            display: none;
+            white-space: pre-wrap;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .btn {
+            border-radius: 10px;
+            padding: 12px 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-generate {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1rem;
+            margin-top: 20px;
+        }
+
+        .contract-output {
+            background: white;
+            padding: 40px 50px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            min-height: 400px;
+            max-width: 100%;
+            margin: 0;
+            font-family: 'Times New Roman', Times, serif;
+        }
+
+        .contract-output .markdown-body {
+            font-size: 12pt;
+            line-height: 1.8;
+            color: #000;
+        }
+
+        .contract-output .markdown-body h1 {
+            font-size: 18pt;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .contract-output .markdown-body h2 {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-top: 30px;
+            margin-bottom: 20px;
+            padding-bottom: 8px;
+            color: #000;
+            border-bottom: 2px solid #e0e0e0;
+            page-break-after: avoid;
+            break-after: avoid;
+        }
+
+        .contract-output .markdown-body h3 {
+            font-size: 12pt;
+            font-weight: bold;
+            margin-top: 20px;
+            margin-bottom: 12px;
+            color: #333;
+            page-break-after: avoid;
+            break-after: avoid;
+        }
+
+        .contract-output .markdown-body p {
+            margin-bottom: 15px;
+            margin-top: 0;
+            text-align: justify;
+            line-height: 1.8;
+            orphans: 3;
+            widows: 3;
+        }
+
+        .contract-output .markdown-body ul,
+        .contract-output .markdown-body ol {
+            margin-left: 30px;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            padding-left: 20px;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .contract-output .markdown-body li {
+            margin-bottom: 10px;
+            line-height: 1.7;
+            padding-left: 5px;
+        }
+        
+        .contract-output .markdown-body strong {
+            font-weight: 600;
+            color: #000;
+        }
+        
+        .contract-output .markdown-body div {
+            margin-bottom: 15px;
+        }
+
+        .contract-output .markdown-body hr {
+            display: none !important;
+            border: none !important;
+            height: 0 !important;
+            margin: 0 !important;
+            visibility: hidden !important;
+        }
+        
+        /* Circular Progress Loader */
+        .circular-progress {
+            display: inline-block;
+            position: relative;
+        }
+        
+        .progress-ring {
+            display: block;
+            animation: rotateLoader 2s linear infinite;
+            transform-origin: center;
+        }
+        
+        @keyframes rotateLoader {
+            from {
+                transform: rotate(-90deg);
+            }
+            to {
+                transform: rotate(270deg);
+            }
+        }
+        
+        .progress-ring-circle {
+            transition: stroke-dashoffset 0.3s ease;
+        }
+        
+        .progress-text {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+        }
+
+        .form-section {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 22px;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .form-section:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .form-section-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+        }
+
+        .form-section-title i {
+            margin-right: 10px;
+            font-size: 1.3rem;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 60px 40px;
+            min-height: 400px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .loading-spinner.active {
+            display: flex !important;
+        }
+
+        .alert-info {
+            background: #e7f3ff;
+            color: #0066cc;
+            border-left: 4px solid #0066cc;
+            border-radius: 10px;
+            padding: 15px 20px;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .btn-download {
+            padding: 10px 20px;
+            font-size: 0.95rem;
+            border-radius: 10px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 110px;
+            justify-content: center;
+            height: 42px;
+            box-sizing: border-box;
+        }
+
+        .btn-download:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-download i {
+            font-size: 0.9rem;
+        }
+        
+        /* Back Button Specific Styles */
+        #back-to-form-btn {
+            border-color: #6c757d;
+            color: #6c757d;
+        }
+        
+        #back-to-form-btn:hover {
+            background: #6c757d;
+            color: white;
+            box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
+        }
+
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 60px 40px;
+            min-height: 400px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .loading-spinner.active {
+            display: flex !important;
+        }
+
+        .translate-dropdown-item:hover {
+            background: #f8f9fa !important;
+        }
+
+        .download-dropdown-item:hover {
+            background: #f0f4ff !important;
+        }
+
+        @media (max-width: 1200px) {
+            .content-wrapper {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="header">
+            <h1><i class="fas fa-file-contract"></i> Smart Contract Creator</h1>
+            <p>Create professional legal contracts easily. Choose from Service Agreements, NDAs, Leases, Employment Contracts, and more. Includes AI assistance, legal validation, and multi-language support.</p>
+        </div>
+
+        <div class="content-wrapper">
+            <!-- Sidebar Form -->
+            <div class="sidebar">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <form id="contract-form" method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <!-- Contract Type, Jurisdiction, and Optional Files Row -->
+                    <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                        <!-- Contract Type Selector -->
+                        <div class="form-section" style="flex: 1; padding: 20px;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label class="form-label" style="font-size: 0.875rem; margin-bottom: 6px;">
+                                    <i class="fas fa-file-contract" style="font-size: 0.9rem;"></i> Contract Type <span class="required">*</span>
+                                </label>
+                                <select name="contract_type" id="contract_type" class="form-select" required>
+                                    {% for type_info in contract_types %}
+                                        <option value="{{ type_info.value }}" {% if type_info.value == selected_contract_type %}selected{% endif %}>
+                                            {{ type_info.label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Jurisdiction Selector -->
+                        <div class="form-section" style="flex: 1; padding: 20px;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label class="form-label" style="font-size: 0.875rem; margin-bottom: 6px;">
+                                    <i class="fas fa-globe" style="font-size: 0.9rem;"></i> Legal Jurisdiction <span class="required">*</span>
+                                </label>
+                                <select name="jurisdiction" id="jurisdiction" class="form-select" required>
+                                    {% for jur in jurisdictions %}
+                                        <option value="{{ jur.value }}" {% if jur.value == selected_jurisdiction %}selected{% endif %}>
+                                            {{ jur.label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Optional Files -->
+                        <div class="form-section" style="flex: 2; padding: 20px;">
+                            <div class="form-section-title" style="font-size: 0.875rem; margin-bottom: 10px;">
+                                <i class="fas fa-paperclip"></i> Optional Files
+                            </div>
+                            <div style="display: flex; gap: 15px;">
+                                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                    <label class="form-label" style="font-size: 0.8rem;">
+                                        <i class="fas fa-file-alt"></i> Supplementary File(s) <small style="color: #666;">(Multiple files allowed)</small>
+                                    </label>
+                                    <div class="file-upload-wrapper">
+                                        <label class="file-upload-label" for="supplementary_file" style="padding: 10px;">
+                                            <i class="fas fa-upload"></i>
+                                            <span id="supplementary-label">Choose Files</span>
+                                        </label>
+                                        <input type="file" name="supplementary_file" id="supplementary_file" 
+                                               accept=".pdf,.doc,.docx" 
+                                               multiple
+                                               onchange="updateMultipleFiles(this, 'supplementary-label', 'supplementary-display')">
+                                    </div>
+                                    <div class="file-name-display" id="supplementary-display"></div>
+                                </div>
+                                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                    <label class="form-label" style="font-size: 0.8rem;">
+                                        <i class="fas fa-file-contract"></i> Template File <small style="color: #666;">(Single file only)</small>
+                                    </label>
+                                    <div class="file-upload-wrapper">
+                                        <label class="file-upload-label" for="template_file" style="padding: 10px;">
+                                            <i class="fas fa-upload"></i>
+                                            <span id="template-label">Choose File</span>
+                                        </label>
+                                        <input type="file" name="template_file" id="template_file" 
+                                               accept=".pdf,.doc,.docx"
+                                               onchange="updateFileName(this, 'template-label', 'template-display')">
+                                    </div>
+                                    <div class="file-name-display" id="template-display"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Prompt Input -->
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-edit"></i> Enter Your Requirements <span class="required">*</span>
+                            </label>
+                            <textarea name="user_prompt" id="user_prompt" class="form-control" rows="10" 
+                                      placeholder="Describe your contract requirements here..."
+                                      required></textarea>
+                            <div class="alert alert-info" style="background: #e7f3ff; border-left: 4px solid #0d6efd; padding: 15px; margin-top: 10px; border-radius: 8px;">
+                                <p style="margin: 0; font-weight: 600; color: #0d6efd; font-size: 0.9rem;">
+                                    <i class="fas fa-lightbulb"></i> Example Requirements:
+                                </p>
+                                <p style="margin: 8px 0 0 0; color: #0d6efd; font-style: italic; font-size: 0.85rem;" id="example-prompt-hint">
+                                    "I need a service agreement between TechCorp (client) and DevSolutions (service provider) for developing a mobile app. The project starts on 2024-04-01, costs $25,000 paid in milestones, and includes 3 months of support after delivery."
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contact Information (Optional) -->
+                    <div class="form-section">
+                        <div class="form-section-title" style="font-size: 0.95rem;">
+                            <i class="fas fa-address-card"></i> Signatory Information (Optional)
+                        </div>
+                        <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                <label class="form-label" style="font-size: 0.85rem;">Party 1 Contact Name</label>
+                                <input type="text" name="party1_contact_name" class="form-control" 
+                                       placeholder="John Smith">
+                            </div>
+                            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                <label class="form-label" style="font-size: 0.85rem;">Party 1 Title</label>
+                                <input type="text" name="party1_contact_title" class="form-control" 
+                                       placeholder="CEO">
+                            </div>
+                            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                <label class="form-label" style="font-size: 0.85rem;">
+                                    <i class="fas fa-signature"></i> Party 1 Signature
+                                </label>
+                                <div class="file-upload-wrapper">
+                                    <label class="file-upload-label" for="party1_signature" style="padding: 10px;">
+                                        <i class="fas fa-upload"></i>
+                                        <span id="party1-sig-label">Upload Image</span>
+                                    </label>
+                                    <input type="file" name="party1_signature" id="party1_signature" 
+                                           accept=".jpg,.jpeg,.png" 
+                                           onchange="updateFileName(this, 'party1-sig-label', 'party1-sig-display')">
+                                </div>
+                                <div class="file-name-display" id="party1-sig-display"></div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 15px;">
+                            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                <label class="form-label" style="font-size: 0.85rem;">Party 2 Contact Name</label>
+                                <input type="text" name="party2_contact_name" class="form-control" 
+                                       placeholder="Jane Doe">
+                            </div>
+                            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                <label class="form-label" style="font-size: 0.85rem;">Party 2 Title</label>
+                                <input type="text" name="party2_contact_title" class="form-control" 
+                                       placeholder="Director">
+                            </div>
+                            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                <label class="form-label" style="font-size: 0.85rem;">
+                                    <i class="fas fa-signature"></i> Party 2 Signature
+                                </label>
+                                <div class="file-upload-wrapper">
+                                    <label class="file-upload-label" for="party2_signature" style="padding: 10px;">
+                                        <i class="fas fa-upload"></i>
+                                        <span id="party2-sig-label">Upload Image</span>
+                                    </label>
+                                    <input type="file" name="party2_signature" id="party2_signature" 
+                                           accept=".jpg,.jpeg,.png" 
+                                           onchange="updateFileName(this, 'party2-sig-label', 'party2-sig-display')">
+                                </div>
+                                <div class="file-name-display" id="party2-sig-display"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn btn-primary btn-generate">
+                        <i class="fas fa-magic"></i> <span id="generate-button-text">Generate Service Agreement</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Contract Output -->
+            <div class="content">
+                <div class="section-title">
+                    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <!-- Back Button -->
+                            <button type="button" class="btn-download" id="back-to-form-btn" onclick="backToForm()">
+                                <i class="fas fa-arrow-left"></i> <span>Back</span>
+                            </button>
+                            <span style="display: inline-flex; align-items: center; gap: 8px; font-size: 1.1rem; font-weight: 600; color: #333;">
+                                <i class="fas fa-file-alt" style="color: #667eea; font-size: 1.2rem;"></i> 
+                                <span>Generated <span id="contract-type-title">Service Agreement</span></span>
+                            </span>
+                        </div>
+                        <!-- Circular Progress Loader -->
+                        <div id="streaming-progress-loader" style="display: none;">
+                            <div class="circular-progress" style="width: 50px; height: 50px;">
+                                <svg class="progress-ring" width="50" height="50">
+                                    <circle class="progress-ring-circle" cx="25" cy="25" r="20" stroke="#667eea" stroke-width="4" fill="transparent" stroke-dasharray="125.66" stroke-dashoffset="125.66" style="transition: stroke-dashoffset 0.3s;"></circle>
+                                </svg>
+                                <div class="progress-text" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 12px; font-weight: 600; color: #667eea; z-index: 1; pointer-events: none;">0%</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <!-- Translate Dropdown -->
+                        <div class="translate-dropdown-wrapper" id="translate-wrapper" style="display: none; position: relative;">
+                            <button class="btn-download" onclick="toggleTranslateDropdown()">
+                                <i class="fas fa-language"></i> <span>Translate</span>
+                                <i class="fas fa-chevron-down" id="translate-chevron" style="transition: transform 0.3s ease; font-size: 0.75rem;"></i>
+                            </button>
+                            <div class="translate-dropdown-menu" id="translate-dropdown-menu" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 8px; background: white; border: 2px solid #667eea; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 180px; z-index: 1000;">
+                                <div class="translate-dropdown-item active" data-lang="en" onclick="selectLanguage('en')" style="padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f0f0f0;">
+                                    🇬🇧 English
+                                </div>
+                                <div class="translate-dropdown-item" data-lang="bn" onclick="selectLanguage('bn')" style="padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f0f0f0;">
+                                    🇧🇩 বাংলা (Bengali)
+                                </div>
+                                <div class="translate-dropdown-item" data-lang="hi" onclick="selectLanguage('hi')" style="padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f0f0f0;">
+                                    🇮🇳 हिन्दी (Hindi)
+                                </div>
+                                <div class="translate-dropdown-item" data-lang="ar" onclick="selectLanguage('ar')" style="padding: 12px 16px; cursor: pointer;">
+                                    🇸🇦 العربية (Arabic)
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Download Dropdown -->
+                        <div id="download-buttons" style="display: none; position: relative;">
+                            <button class="btn-download" onclick="toggleDownloadDropdown()">
+                                <i class="fas fa-download"></i> <span>Download</span>
+                                <i class="fas fa-chevron-down" id="download-chevron" style="font-size: 0.75rem; transition: transform 0.3s ease;"></i>
+                            </button>
+                            <div id="download-dropdown-menu" style="display: none; position: absolute; top: 100%; left: 0; margin-top: 5px; background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); min-width: 160px; z-index: 1000; overflow: hidden;">
+                                <div class="download-dropdown-item" onclick="downloadPDF()" style="padding: 12px 16px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 0.2s;">
+                                    <i class="fas fa-file-pdf" style="color: #dc3545; width: 18px;"></i> PDF
+                                </div>
+                                <div class="download-dropdown-item" onclick="downloadDOCX()" style="padding: 12px 16px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 0.2s;">
+                                    <i class="fas fa-file-word" style="color: #2b579a; width: 18px;"></i> DOCX
+                                </div>
+                                <div class="download-dropdown-item" onclick="downloadMarkdown()" style="padding: 12px 16px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 0.2s;">
+                                    <i class="fas fa-file-alt" style="color: #6c757d; width: 18px;"></i> Markdown
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="contract-container">
+                    {% if legal_error and legal_error.is_illegal %}
+                    <div class="alert" style="background: #f8d7da; border-left: 4px solid #dc3545; padding: 20px; margin-bottom: 20px; border-radius: 4px;">
+                                    <div style="display: flex; align-items: start; gap: 12px;">
+                                        <i class="fas fa-ban" style="color: #dc3545; font-size: 1.5rem; margin-top: 2px;"></i>
+                                        <div style="flex: 1;">
+                                            <h4 style="color: #dc3545; margin: 0 0 10px 0; font-weight: 600;">
+                                                Illegal Requirement Detected
+                                            </h4>
+                                <p style="color: #333; margin: 0 0 10px 0; line-height: 1.6;">
+                                    {{ legal_error.error_message|default:legal_error.reason|default:"This requirement contains illegal or problematic elements. Contract generation has been blocked." }}
+                                </p>
+                                {% if legal_error.illegal_elements %}
+                                <div style="margin-top: 10px;">
+                                    <strong style="color: #333;">Identified Issues:</strong>
+                                    <ul style="margin: 8px 0 0 20px; color: #555;">
+                                        {% for element in legal_error.illegal_elements %}
+                                        <li>{{ element }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                {% endif %}
+                                {% if legal_error.references %}
+                                <div style="margin-top: 15px;">
+                                    <strong style="color: #333;">Legal References (from Internet Search):</strong>
+                                    <ul style="margin-top: 8px; padding-left: 20px; list-style: none;">
+                                        {% for ref in legal_error.references %}
+                                        <li style="margin-bottom: 12px; padding: 8px; background: #f8f9fa; border-radius: 4px;">
+                                            <a href="{{ ref.url }}" target="_blank" rel="noopener noreferrer" style="color: #0066cc; text-decoration: none; font-weight: 600; display: block; margin-bottom: 4px;">{{ ref.title|default:ref.url }}</a>
+                                            {% if ref.snippet %}
+                                            <p style="color: #555; font-size: 0.9em; margin: 4px 0; line-height: 1.4;">{{ ref.snippet }}</p>
+                                            {% endif %}
+                                            <a href="{{ ref.url }}" target="_blank" rel="noopener noreferrer" style="color: #0066cc; font-size: 0.85em; text-decoration: none;">{{ ref.url }}</a>
+                                            <span style="color: #666; font-size: 0.85em; margin-left: 8px;">({{ ref.source|default:"Internet Search" }})</span>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                {% endif %}
+                                <p style="margin-top: 15px; margin-bottom: 0; font-size: 0.9em; color: #666;">
+                                    <strong>Note:</strong> Please review the legal references above and consult with a legal professional. Contract cannot be generated for illegal requirements.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if generated_contract_html %}
+                    <div class="contract-output markdown-body fade-in">
+                        {{ generated_contract_html|safe }}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info" style="background: #e7f3ff; border-left: 4px solid #0d6efd; padding: 20px;">
+                        <p style="margin: 0; font-weight: 600; color: #0d6efd;">
+                            <i class="fas fa-lightbulb"></i> Example Requirements:
+                        </p>
+                        <p style="margin: 10px 0 0 0; color: #0d6efd; font-style: italic;" id="example-prompt-text">
+                            "I need a service agreement between TechCorp (client) and DevSolutions (service provider) for developing a mobile app. The project starts on 2024-04-01, costs $25,000 paid in milestones, and includes 3 months of support after delivery."
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Error Modal -->
+                <div id="error-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;">
+                    <div style="background: white; border-radius: 16px; max-width: 480px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); overflow: hidden; animation: modalSlideIn 0.3s ease;">
+                        <div id="error-modal-header" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: 20px 25px; display: flex; align-items: center; gap: 12px;">
+                            <i class="fas fa-exclamation-circle" style="font-size: 1.5rem;"></i>
+                            <span style="font-size: 1.2rem; font-weight: 600;" id="error-modal-title">Validation Error</span>
+                        </div>
+                        <div style="padding: 25px;">
+                            <p id="error-modal-message" style="color: #333; font-size: 1rem; line-height: 1.6; margin: 0;"></p>
+                        </div>
+                        <div style="padding: 15px 25px 25px; display: flex; justify-content: flex-end;">
+                            <button onclick="closeErrorModal()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 30px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+                                <i class="fas fa-check"></i> Got it
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+    <script>
+        let generatedContractMd = '';
+        let generatedContractType = '';
+        let originalContractMd = '';  // Store original for translation reset
+        let currentLanguage = 'en';
+        
+        // Cache for translations - stores both md and html
+        let translationCache = {
+            'en': { md: '', html: '' },
+            'bn': { md: '', html: '' },
+            'hi': { md: '', html: '' },
+            'ar': { md: '', html: '' }
+        };
+        
+        // Error Modal Functions
+        function showErrorModal(title, message, type = 'error') {
+            const modal = document.getElementById('error-modal');
+            const header = document.getElementById('error-modal-header');
+            const titleEl = document.getElementById('error-modal-title');
+            const messageEl = document.getElementById('error-modal-message');
+            
+            titleEl.textContent = title;
+            messageEl.innerHTML = message;
+            
+            // Set color based on type
+            if (type === 'warning') {
+                header.style.background = 'linear-gradient(135deg, #ffc107 0%, #e0a800 100%)';
+            } else if (type === 'validation') {
+                header.style.background = 'linear-gradient(135deg, #fd7e14 0%, #e06600 100%)';
+            } else {
+                header.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+            }
+            
+            modal.style.display = 'flex';
+        }
+        
+        function closeErrorModal() {
+            document.getElementById('error-modal').style.display = 'none';
+        }
+        
+        // Close modal when clicking outside
+        document.getElementById('error-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeErrorModal();
+            }
+        });
+        
+        // Example prompts per contract type
+        const examplePrompts = {
+            service_agreement: "I need a service agreement between TechCorp (client) and DevSolutions (service provider) for developing a mobile app. The project starts on 2024-04-01, costs $25,000 paid in milestones, and includes 3 months of support after delivery.",
+            nda: "I need a mutual NDA between ABC Tech Ltd. (Discloser) and XYZ Agency (Recipient) to share confidential business and technical information for a potential software development project. 5-year confidentiality period with standard exceptions.",
+            lease: "I need a lease agreement between GreenView Properties (Landlord) and John Smith (Tenant) for a 2-bedroom apartment at 123 Main Street. Monthly rent: BDT 35,000, 12-month lease starting 2024-06-01, security deposit: BDT 70,000.",
+            employment: "I need an employment contract between ABC Software Ltd. (Employer) and John Doe (Employee) for Senior Software Engineer. Salary: BDT 150,000/month, start date: 2025-07-01, 6-month probation, includes non-compete clause.",
+            sop: "I am applying for MSc in Computer Science at Stanford University for Fall 2025. BSc from MIT (CGPA 3.8), 2 years at Google working on ML, published AI research. Goal: ML Research Scientist in healthcare AI.",
+            developer_agreement: "I need a Developer Agreement between Rahman Holdings (Landowner) and BrightBuild Developers (Developer) for a 12-storey building on 10-katha plot at Bashundhara, Dhaka. JDA model with 40% area to Landowner, 36-month timeline."
+        };
+        
+        function updateFileName(input, labelId, displayId) {
+            const label = document.getElementById(labelId);
+            const display = document.getElementById(displayId);
+            
+            if (input.files && input.files[0]) {
+                const fileName = input.files[0].name;
+                label.textContent = fileName.length > 30 ? fileName.substring(0, 30) + '...' : fileName;
+                display.textContent = 'Selected: ' + fileName;
+                display.style.display = 'block';
+            } else {
+                label.textContent = 'Choose File';
+                display.style.display = 'none';
+            }
+        }
+        
+        function updateMultipleFiles(input, labelId, displayId) {
+            const label = document.getElementById(labelId);
+            const display = document.getElementById(displayId);
+            
+            if (input.files && input.files.length > 0) {
+                const fileCount = input.files.length;
+                if (fileCount === 1) {
+                    label.textContent = input.files[0].name.length > 30 ? input.files[0].name.substring(0, 30) + '...' : input.files[0].name;
+                    display.textContent = 'Selected: ' + input.files[0].name;
+                } else {
+                    label.textContent = `${fileCount} files selected`;
+                    let fileList = 'Selected files:\n';
+                    for (let i = 0; i < input.files.length; i++) {
+                        fileList += `${i + 1}. ${input.files[i].name}\n`;
+                    }
+                    display.textContent = fileList;
+                }
+                display.style.display = 'block';
+            } else {
+                label.textContent = 'Choose Files';
+                display.style.display = 'none';
+            }
+        }
+
+        // Update UI when contract type changes
+        document.addEventListener('DOMContentLoaded', function() {
+            const contractTypeSelect = document.getElementById('contract_type');
+            const titleSpan = document.getElementById('contract-type-title');
+            const buttonText = document.getElementById('generate-button-text');
+            const exampleText = document.getElementById('example-prompt-text');
+            const exampleHint = document.getElementById('example-prompt-hint');
+            
+            function updateContractType() {
+                const selectedOption = contractTypeSelect.options[contractTypeSelect.selectedIndex];
+                const selectedValue = contractTypeSelect.value;
+                
+                // Update title
+                titleSpan.textContent = selectedOption.text;
+                
+                // Update button text
+                buttonText.textContent = 'Generate ' + selectedOption.text;
+                
+                // Update example prompt (both elements)
+                if (examplePrompts[selectedValue]) {
+                    const exampleContent = '"' + examplePrompts[selectedValue] + '"';
+                    if (exampleText) {
+                        exampleText.textContent = exampleContent;
+                    }
+                    if (exampleHint) {
+                        exampleHint.textContent = exampleContent;
+                    }
+                }
+            }
+            
+            contractTypeSelect.addEventListener('change', updateContractType);
+            updateContractType(); // Set initial values
+            
+            // Form submission
+            document.getElementById('contract-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const contractContainer = document.getElementById('contract-container');
+            const downloadButtons = document.getElementById('download-buttons');
+            const translateWrapper = document.getElementById('translate-wrapper');
+            const sidebar = document.querySelector('.sidebar');
+            const content = document.querySelector('.content');
+            
+            // Hide form, show output area
+            sidebar.classList.add('hidden');
+            content.classList.add('visible');
+            
+            // Show contract container immediately for streaming
+            contractContainer.style.display = 'block';
+            downloadButtons.style.display = 'none';
+            translateWrapper.style.display = 'none';
+            
+            // Create FormData
+            const formData = new FormData(this);
+            formData.append('stream', 'true');  // Enable streaming
+            
+            // Store contract type for download
+            generatedContractType = document.getElementById('contract_type').value;
+            
+            // Accumulate streamed content
+            let accumulatedText = '';
+            let coverPageHtml = '';
+            contractContainer.style.display = 'block';
+            contractContainer.innerHTML = '<div class="contract-output markdown-body"><div id="cover-page-container"></div><div id="streaming-content"></div></div>';
+            const coverPageContainer = document.getElementById('cover-page-container');
+            const streamingContent = document.getElementById('streaming-content');
+            
+            // Show progress loader
+            const progressLoader = document.getElementById('streaming-progress-loader');
+            const progressCircle = document.querySelector('.progress-ring-circle');
+            const progressText = document.querySelector('.progress-text');
+            if (progressLoader) progressLoader.style.display = 'block';
+            
+            // Function to update progress
+            function updateProgress(percentage) {
+                if (progressCircle && progressText) {
+                    const circumference = 2 * Math.PI * 20; // radius = 20
+                    const offset = circumference - (percentage / 100) * circumference;
+                    progressCircle.style.strokeDashoffset = offset;
+                    progressText.textContent = Math.round(percentage) + '%';
+                }
+            }
+            
+            // Initialize progress
+            updateProgress(0);
+            
+            // Submit with streaming
+            fetch('{% url "contracts:generate" %}', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                // Check if response is streaming (text/event-stream) or JSON
+                const contentType = response.headers.get('content-type') || '';
+                
+                if (contentType.includes('text/event-stream')) {
+                    // Handle streaming response
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+                    
+                    function readStream() {
+                        reader.read().then(({ done, value }) => {
+                            if (done) {
+                                return;
+                            }
+                            
+                            buffer += decoder.decode(value, { stream: true });
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop() || '';  // Keep incomplete line in buffer
+                            
+                            for (const line of lines) {
+                                if (line.startsWith('data: ')) {
+                                    try {
+                                        const data = JSON.parse(line.slice(6));
+                                        
+                                        if (data.status === 'cover_page' && data.html) {
+                                            // Render cover page HTML directly (already formatted)
+                                            if (coverPageContainer) {
+                                                coverPageContainer.innerHTML = data.html;
+                                            }
+                                        } else if (data.status === 'streaming' && data.chunk) {
+                                            // Append chunk to accumulated text
+                                            accumulatedText += data.chunk;
+                                            
+                                            // Estimate progress (rough estimation based on text length)
+                                            // Assuming average contract is ~5000-8000 characters
+                                            const estimatedTotal = 6000;
+                                            const currentProgress = Math.min(95, (accumulatedText.length / estimatedTotal) * 100);
+                                            updateProgress(currentProgress);
+                                            
+                                            // Convert markdown to HTML and update UI in real-time
+                                            if (typeof marked !== 'undefined') {
+                                                streamingContent.innerHTML = marked.parse(accumulatedText);
+                                            } else {
+                                                // Fallback to plain text if marked is not available
+                                                streamingContent.textContent = accumulatedText;
+                                            }
+                                            streamingContent.scrollTop = streamingContent.scrollHeight;
+                                        } else if (data.status === 'success') {
+                                            // Streaming complete - update with final HTML
+                                            updateProgress(100);
+                                            setTimeout(() => {
+                                                const progressLoaderEl = document.getElementById('streaming-progress-loader');
+                                                if (progressLoaderEl) progressLoaderEl.style.display = 'none';
+                                            }, 500);
+                                            contractContainer.innerHTML = `
+                                                <div class="contract-output markdown-body fade-in">
+                                                    ${data.contract_html}
+                                                </div>
+                                            `;
+                                            generatedContractMd = data.contract_md;
+                                            originalContractMd = data.contract_md;
+                                            currentLanguage = 'en';
+                                            
+                                            // Cache English version
+                                            translationCache['en'] = {
+                                                md: data.contract_md,
+                                                html: data.contract_html
+                                            };
+                                            // Clear other language caches
+                                            translationCache['bn'] = { md: '', html: '' };
+                                            translationCache['hi'] = { md: '', html: '' };
+                                            translationCache['ar'] = { md: '', html: '' };
+                                            
+                                            // Show buttons
+                                            downloadButtons.style.display = 'flex';
+                                            translateWrapper.style.display = 'inline-block';
+                                            
+                                            // Reset translate dropdown active state
+                                            document.querySelectorAll('.translate-dropdown-item').forEach(item => {
+                                                item.classList.remove('active');
+                                                item.style.background = '';
+                                                item.style.color = '';
+                                                item.style.fontWeight = '';
+                                            });
+                                            const enItem = document.querySelector('.translate-dropdown-item[data-lang="en"]');
+                                            if (enItem) {
+                                                enItem.classList.add('active');
+                                                enItem.style.background = '#e7f3ff';
+                                                enItem.style.color = '#667eea';
+                                                enItem.style.fontWeight = '600';
+                                            }
+                                            return;
+                                        } else if (data.status === 'error') {
+                                            // Handle error
+                                            const progressLoaderEl = document.getElementById('streaming-progress-loader');
+                                            if (progressLoaderEl) progressLoaderEl.style.display = 'none';
+                                            contractContainer.innerHTML = `
+                                                <div class="alert" style="background: #f8d7da; border-left: 4px solid #dc3545; padding: 20px; margin-bottom: 20px; border-radius: 4px;">
+                                                    <h4 style="color: #dc3545; margin: 0 0 10px 0;">Error</h4>
+                                                    <p style="color: #333; margin: 0;">${data.message || 'Error generating contract'}</p>
+                                                </div>
+                                            `;
+                                            return;
+                                        }
+                                    } catch (e) {
+                                        console.error('Error parsing stream data:', e, line);
+                                    }
+                                }
+                            }
+                            
+                            readStream();
+                        }).catch(error => {
+                            const progressLoaderEl = document.getElementById('streaming-progress-loader');
+                            if (progressLoaderEl) progressLoaderEl.style.display = 'none';
+                            console.error('Stream reading error:', error);
+                            contractContainer.innerHTML = `
+                                <div class="alert" style="background: #f8d7da; border-left: 4px solid #dc3545; padding: 20px; margin-bottom: 20px; border-radius: 4px;">
+                                    <h4 style="color: #dc3545; margin: 0 0 10px 0;">Error</h4>
+                                    <p style="color: #333; margin: 0;">${error.message || 'Error generating contract'}</p>
+                                </div>
+                            `;
+                        });
+                    }
+                    
+                    readStream(); // Start reading the stream
+                } else {
+                    // Handle JSON response (non-streaming or error response)
+                    return response.json().then(data => {
+                        contractContainer.style.display = 'block';
+                        
+                        if (data.status === 'success') {
+                            // Contract generated successfully
+                            contractContainer.innerHTML = `
+                                <div class="contract-output markdown-body fade-in">
+                                    ${data.contract_html}
+                                </div>
+                            `;
+                            generatedContractMd = data.contract_md;
+                            originalContractMd = data.contract_md;
+                            currentLanguage = 'en';
+                            
+                            // Cache English version
+                            translationCache['en'] = {
+                                md: data.contract_md,
+                                html: data.contract_html
+                            };
+                            // Clear other language caches
+                            translationCache['bn'] = { md: '', html: '' };
+                            translationCache['hi'] = { md: '', html: '' };
+                            translationCache['ar'] = { md: '', html: '' };
+                            
+                            // Show buttons
+                            downloadButtons.style.display = 'flex';
+                            translateWrapper.style.display = 'inline-block';
+                            
+                            // Reset translate dropdown active state
+                            document.querySelectorAll('.translate-dropdown-item').forEach(item => {
+                                item.classList.remove('active');
+                                item.style.background = '';
+                                item.style.color = '';
+                                item.style.fontWeight = '';
+                            });
+                            const enItem = document.querySelector('.translate-dropdown-item[data-lang="en"]');
+                            if (enItem) {
+                                enItem.classList.add('active');
+                                enItem.style.background = '#e7f3ff';
+                                enItem.style.color = '#667eea';
+                                enItem.style.fontWeight = '600';
+                            }
+                        } else {
+                            // Handle errors - check if it's a legal validation error
+                            if (data.error_type === 'legal_validation' && data.legal_error) {
+                                const legalError = data.legal_error;
+                                let referencesHtml = '';
+                                if (legalError.references && legalError.references.length > 0) {
+                                    referencesHtml = '<div style="margin-top: 15px;"><strong style="color: #333;">Legal References (from Internet Search):</strong><ul style="margin-top: 8px; padding-left: 20px; list-style: none;">';
+                                    legalError.references.forEach(ref => {
+                                        referencesHtml += `
+                                            <li style="margin-bottom: 12px; padding: 8px; background: #f8f9fa; border-radius: 4px;">
+                                                <a href="${ref.url}" target="_blank" rel="noopener noreferrer" style="color: #0066cc; text-decoration: none; font-weight: 600; display: block; margin-bottom: 4px;">${ref.title || ref.url}</a>
+                                                ${ref.snippet ? `<p style="color: #555; font-size: 0.9em; margin: 4px 0; line-height: 1.4;">${ref.snippet}</p>` : ''}
+                                                <a href="${ref.url}" target="_blank" rel="noopener noreferrer" style="color: #0066cc; font-size: 0.85em; text-decoration: none;">${ref.url}</a>
+                                                <span style="color: #666; font-size: 0.85em; margin-left: 8px;">(${ref.source || 'Internet Search'})</span>
+                                            </li>
+                                        `;
+                                    });
+                                    referencesHtml += '</ul></div>';
+                                }
+                                
+                                let illegalElementsHtml = '';
+                                if (legalError.illegal_elements && legalError.illegal_elements.length > 0) {
+                                    illegalElementsHtml = '<div style="margin-top: 10px;"><strong style="color: #333;">Identified Issues:</strong><ul style="margin: 8px 0 0 20px; color: #555;">';
+                                    legalError.illegal_elements.forEach(el => {
+                                        illegalElementsHtml += `<li>${el}</li>`;
+                                    });
+                                    illegalElementsHtml += '</ul></div>';
+                                }
+                                
+                                contractContainer.innerHTML = `
+                                    <div class="alert" style="background: #f8d7da; border-left: 4px solid #dc3545; padding: 20px; margin-bottom: 20px; border-radius: 4px;">
+                                        <div style="display: flex; align-items: start; gap: 12px;">
+                                            <i class="fas fa-ban" style="color: #dc3545; font-size: 1.5rem; margin-top: 2px;"></i>
+                                            <div style="flex: 1;">
+                                                <h4 style="color: #dc3545; margin: 0 0 10px 0; font-weight: 600;">
+                                                    Illegal Requirement Detected
+                                                </h4>
+                                                <p style="color: #333; margin: 0 0 10px 0; line-height: 1.6;">
+                                                    ${legalError.error_message || legalError.reason || 'This requirement contains illegal or problematic elements. Contract generation has been blocked.'}
+                                                </p>
+                                                ${illegalElementsHtml}
+                                                ${referencesHtml}
+                                                <p style="margin-top: 15px; margin-bottom: 0; font-size: 0.9em; color: #666;">
+                                                    <strong>Note:</strong> Please review the legal references above and consult with a legal professional. Contract cannot be generated for illegal requirements.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="alert alert-info" style="background: #e7f3ff; border-left: 4px solid #0d6efd; padding: 20px;">
+                                        <p style="margin: 0; font-weight: 600; color: #0d6efd;">
+                                            <i class="fas fa-lightbulb"></i> Example Requirements:
+                                        </p>
+                                        <p style="margin: 10px 0 0 0; color: #0d6efd; font-style: italic;" id="example-prompt-text">
+                                            "${examplePrompts[generatedContractType] || examplePrompts['service_agreement']}"
+                                        </p>
+                                    </div>
+                                `;
+                            } else {
+                                // Generic error
+                                contractContainer.innerHTML = `
+                                    <div class="alert" style="background: #f8d7da; border-left: 4px solid #dc3545; padding: 20px; margin-bottom: 20px; border-radius: 4px;">
+                                        <h4 style="color: #dc3545; margin: 0 0 10px 0;">Error</h4>
+                                        <p style="color: #333; margin: 0;">${data.message || 'Error generating contract'}</p>
+                                    </div>
+                                `;
+                            }
+                        }
+                    }).catch(error => {
+                        contractContainer.style.display = 'block';
+                        contractContainer.innerHTML = `
+                            <div class="alert" style="background: #f8d7da; border-left: 4px solid #dc3545; padding: 20px; margin-bottom: 20px; border-radius: 4px;">
+                                <h4 style="color: #dc3545; margin: 0 0 10px 0;">Error</h4>
+                                <p style="color: #333; margin: 0;">${error.message || 'Error generating contract'}</p>
+                            </div>
+                        `;
+                    });
+                }
+            })
+            .catch(error => {
+                const progressLoaderErr = document.getElementById('streaming-progress-loader');
+                if (progressLoaderErr) progressLoaderErr.style.display = 'none';
+                contractContainer.style.display = 'block';
+                contractContainer.innerHTML = `
+                    <div class="alert" style="background: #f8d7da; border-left: 4px solid #dc3545; padding: 20px; margin-bottom: 20px; border-radius: 4px;">
+                        <h4 style="color: #dc3545; margin: 0 0 10px 0;">Error</h4>
+                        <p style="color: #333; margin: 0;">${error.message || 'Error generating contract'}</p>
+                    </div>
+                `;
+            });
+            });  // End of form submit handler
+        });  // End of DOMContentLoaded
+
+        // Back to form function
+        function backToForm() {
+            const sidebar = document.querySelector('.sidebar');
+            const content = document.querySelector('.content');
+            sidebar.classList.remove('hidden');
+            content.classList.remove('visible');
+        }
+
+        // Translate dropdown functions
+        function toggleTranslateDropdown() {
+            const menu = document.getElementById('translate-dropdown-menu');
+            const chevron = document.getElementById('translate-chevron');
+            
+            if (menu.style.display === 'block') {
+                menu.style.display = 'none';
+                chevron.style.transform = 'rotate(0deg)';
+            } else {
+                menu.style.display = 'block';
+                chevron.style.transform = 'rotate(180deg)';
+            }
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            const wrapper = document.getElementById('translate-wrapper');
+            const menu = document.getElementById('translate-dropdown-menu');
+            if (wrapper && !wrapper.contains(e.target) && menu) {
+                menu.style.display = 'none';
+                document.getElementById('translate-chevron').style.transform = 'rotate(0deg)';
+            }
+        });
+        
+        function selectLanguage(lang) {
+            const menu = document.getElementById('translate-dropdown-menu');
+            menu.style.display = 'none';
+            document.getElementById('translate-chevron').style.transform = 'rotate(0deg)';
+            
+            // Update active state
+            document.querySelectorAll('.translate-dropdown-item').forEach(item => {
+                item.classList.remove('active');
+                item.style.background = '';
+                item.style.color = '';
+                item.style.fontWeight = '';
+            });
+            const selectedItem = document.querySelector(`.translate-dropdown-item[data-lang="${lang}"]`);
+            selectedItem.classList.add('active');
+            selectedItem.style.background = '#e7f3ff';
+            selectedItem.style.color = '#667eea';
+            selectedItem.style.fontWeight = '600';
+            
+            const contractContainer = document.getElementById('contract-container');
+            
+            // Check if translation is already cached
+            if (translationCache[lang] && translationCache[lang].html) {
+                // Use cached version - instant display
+                generatedContractMd = translationCache[lang].md;
+                contractContainer.innerHTML = `
+                    <div class="contract-output markdown-body fade-in">
+                        ${translationCache[lang].html}
+                    </div>
+                `;
+                currentLanguage = lang;
+                return;
+            }
+            
+            // If English and not cached (shouldn't happen normally), use original
+            if (lang === 'en' && originalContractMd) {
+                generatedContractMd = originalContractMd;
+                // Need to convert md to html - but we should have cached it
+                // Fallback: call API
+                contractContainer.innerHTML = `
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-3" style="color: #667eea;">Loading English...</p>
+                    </div>
+                `;
+                
+                fetch('{% url "contracts:translate" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify({
+                        contract_md: originalContractMd,
+                        target_language: 'en'
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Cache it
+                        translationCache['en'] = {
+                            md: originalContractMd,
+                            html: data.translated_html
+                        };
+                        contractContainer.innerHTML = `
+                            <div class="contract-output markdown-body fade-in">
+                                ${data.translated_html}
+                            </div>
+                        `;
+                    }
+                });
+                currentLanguage = 'en';
+            } else {
+                // Need to translate - call API
+                translateContract(lang);
+            }
+        }
+        
+        function translateContract(targetLang) {
+            if (!originalContractMd) return;
+            
+            const langNames = {
+                'bn': 'Bengali',
+                'hi': 'Hindi',
+                'ar': 'Arabic'
+            };
+            
+            const contractContainer = document.getElementById('contract-container');
+            
+            // Setup for streaming
+            let coverPageHtml = '';
+            contractContainer.innerHTML = '<div class="contract-output markdown-body"><div id="cover-page-container"></div><div id="streaming-content"></div></div>';
+            const coverPageContainer = document.getElementById('cover-page-container');
+            const streamingContent = document.getElementById('streaming-content');
+            
+            // Show progress loader and initialize to 0%
+            const progressLoader = document.getElementById('streaming-progress-loader');
+            const progressCircle = document.querySelector('.progress-ring-circle');
+            const progressText = document.querySelector('.progress-text');
+            if (progressLoader) progressLoader.style.display = 'block';
+            
+            // Initialize progress to 0%
+            function updateProgress(percentage) {
+                if (progressCircle && progressText) {
+                    const circumference = 2 * Math.PI * 20; // radius = 20
+                    const offset = circumference - (percentage / 100) * circumference;
+                    progressCircle.style.strokeDashoffset = offset;
+                    progressText.textContent = Math.round(percentage) + '%';
+                }
+            }
+            updateProgress(0); // Start at 0%
+            
+            let accumulatedText = '';
+            let totalCharsEstimate = 6000; // Rough estimate for progress calculation
+            
+            fetch('{% url "contracts:translate" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    contract_md: originalContractMd,
+                    target_language: langNames[targetLang],
+                    stream: 'true'
+                })
+            })
+            .then(response => {
+                // Check if response is streaming (text/event-stream) or JSON
+                const contentType = response.headers.get('content-type') || '';
+                
+                if (contentType.includes('text/event-stream')) {
+                    // Handle streaming response (same as contract generation)
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+                    
+                    function readStream() {
+                        reader.read().then(({ done, value }) => {
+                            if (done) {
+                                if (progressLoader) progressLoader.style.display = 'none';
+                                return;
+                            }
+                            
+                            buffer += decoder.decode(value, { stream: true });
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop() || ''; // Keep incomplete line in buffer
+                            
+                            for (const line of lines) {
+                                if (line.startsWith('data: ')) {
+                                    try {
+                                        const data = JSON.parse(line.slice(6));
+                                        
+                                        if (data.status === 'cover_page' && data.html) {
+                                            // Render cover page HTML directly
+                                            if (coverPageContainer) {
+                                                coverPageContainer.innerHTML = data.html;
+                                            }
+                                            coverPageHtml = data.html;
+                                            accumulatedText = "\n\n---\n\n";
+                                        } else if (data.status === 'streaming' && data.chunk) {
+                                            // Append chunk and render with marked.js
+                                            accumulatedText += data.chunk;
+                                            
+                                            // Update progress (estimate based on text length)
+                                            const currentProgress = Math.min(95, (accumulatedText.length / totalCharsEstimate) * 100);
+                                            updateProgress(currentProgress);
+                                            
+                                            if (streamingContent) {
+                                                streamingContent.innerHTML = marked.parse(accumulatedText);
+                                            }
+                                        } else if (data.status === 'success') {
+                                            // Translation complete - set to 100%
+                                            updateProgress(100);
+                                            // Translation complete
+                                            generatedContractMd = data.translated_md;
+                                            
+                                            // Cache the translation
+                                            translationCache[targetLang] = {
+                                                md: data.translated_md,
+                                                html: data.translated_html
+                                            };
+                                            
+                                            // Update with final HTML (cover page + translated content)
+                                            contractContainer.innerHTML = `
+                                                <div class="contract-output markdown-body fade-in">
+                                                    ${data.translated_html}
+                                                </div>
+                                            `;
+                                            currentLanguage = targetLang;
+                                            // Hide loader after a brief delay
+                                            setTimeout(() => {
+                                                if (progressLoader) progressLoader.style.display = 'none';
+                                            }, 500);
+                                        } else if (data.status === 'error') {
+                                            contractContainer.innerHTML = `
+                                                <div class="alert alert-danger">
+                                                    <i class="fas fa-exclamation-triangle"></i> 
+                                                    <strong>Error:</strong> ${data.message || 'Translation failed'}
+                                                </div>
+                                            `;
+                                            if (progressLoader) progressLoader.style.display = 'none';
+                                        }
+                                    } catch (e) {
+                                        console.error('Error parsing SSE data:', e, line);
+                                    }
+                                }
+                            }
+                            
+                            readStream();
+                        }).catch(error => {
+                            console.error('Stream reading error:', error);
+                            contractContainer.innerHTML = `
+                                <div class="alert alert-danger">
+                                    <i class="fas fa-exclamation-triangle"></i> 
+                                    <strong>Error:</strong> ${error.message || 'Translation failed'}
+                                </div>
+                            `;
+                            if (progressLoader) progressLoader.style.display = 'none';
+                        });
+                    }
+                    
+                    readStream();
+                } else {
+                    // Fallback to non-streaming JSON response
+                    return response.json().then(data => {
+                        if (data.status === 'success') {
+                            generatedContractMd = data.translated_md;
+                            
+                            translationCache[targetLang] = {
+                                md: data.translated_md,
+                                html: data.translated_html
+                            };
+                            
+                            contractContainer.innerHTML = `
+                                <div class="contract-output markdown-body fade-in">
+                                    ${data.translated_html}
+                                </div>
+                            `;
+                            currentLanguage = targetLang;
+                        } else {
+                            contractContainer.innerHTML = `
+                                <div class="alert alert-danger">
+                                    <i class="fas fa-exclamation-triangle"></i> 
+                                    <strong>Error:</strong> ${data.message || 'Translation failed'}
+                                </div>
+                            `;
+                        }
+                        if (progressLoader) progressLoader.style.display = 'none';
+                    });
+                }
+            })
+            .catch(error => {
+                contractContainer.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        <strong>Error:</strong> ${error.message || 'Translation failed'}
+                    </div>
+                `;
+                if (progressLoader) progressLoader.style.display = 'none';
+            });
+        }
+        
+        // Download dropdown functions
+        function toggleDownloadDropdown() {
+            const menu = document.getElementById('download-dropdown-menu');
+            const chevron = document.getElementById('download-chevron');
+            
+            if (menu.style.display === 'block') {
+                menu.style.display = 'none';
+                chevron.style.transform = 'rotate(0deg)';
+            } else {
+                menu.style.display = 'block';
+                chevron.style.transform = 'rotate(180deg)';
+            }
+        }
+        
+        // Close download dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            const downloadWrapper = document.getElementById('download-buttons');
+            const menu = document.getElementById('download-dropdown-menu');
+            if (downloadWrapper && !downloadWrapper.contains(e.target) && menu) {
+                menu.style.display = 'none';
+                document.getElementById('download-chevron').style.transform = 'rotate(0deg)';
+            }
+        });
+
+        function downloadMarkdown() {
+            if (!generatedContractMd) return;
+            closeDownloadDropdown();
+            
+            const blob = new Blob([generatedContractMd], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${generatedContractType}_${Date.now()}.md`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        function closeDownloadDropdown() {
+            const menu = document.getElementById('download-dropdown-menu');
+            const chevron = document.getElementById('download-chevron');
+            if (menu) menu.style.display = 'none';
+            if (chevron) chevron.style.transform = 'rotate(0deg)';
+        }
+
+        function downloadPDF() {
+            const contractOutput = document.querySelector('.contract-output');
+            if (!contractOutput) return;
+            closeDownloadDropdown();
+            
+            // Create a well-structured HTML document for printing (browser print dialog)
+            const printContent = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>${generatedContractType.replace('_', ' ').toUpperCase()}</title>
+    <style>
+            @media print {
+            @page { 
+                margin: 20mm 15mm;
+                size: A4;
+            }
+            @page :first {
+                margin: 0mm;
+            }
+            * {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            body { 
+                margin: 0;
+                padding: 0;
+                font-family: 'Times New Roman', Times, serif; 
+                line-height: 1.8; 
+                font-size: 12pt;
+                color: #000;
+            }
+            /* Cover page centering */
+            div[style*="page-break-after: always"] {
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: center !important;
+                align-items: center !important;
+                min-height: 100vh !important;
+                height: 842px !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 40px 20px !important;
+                box-sizing: border-box !important;
+            }
+            /* Cover page inner container - center all content */
+            div[style*="page-break-after: always"] > div {
+                text-align: center !important;
+                width: 100% !important;
+                max-width: 700px !important;
+                margin: 0 auto !important;
+            }
+            /* Cover page - center all text elements */
+            div[style*="page-break-after: always"] h1,
+            div[style*="page-break-after: always"] p,
+            div[style*="page-break-after: always"] div {
+                text-align: center !important;
+            }
+            /* Cover page - center all nested divs and paragraphs */
+            div[style*="page-break-after: always"] div div,
+            div[style*="page-break-after: always"] div p {
+                text-align: center !important;
+            }
+            /* Content after cover page - add top padding */
+            div[style*="page-break-after: always"] + * {
+                margin-top: 0;
+                padding-top: 0;
+            }
+            h1 { 
+                font-size: 18pt; 
+                font-weight: bold; 
+                text-align: center; 
+                margin-bottom: 30px; 
+                margin-top: 0; 
+                text-transform: uppercase; 
+                letter-spacing: 1px; 
+                page-break-after: avoid;
+            }
+            h2 { 
+                font-size: 14pt; 
+                font-weight: bold; 
+                margin-top: 30px; 
+                margin-bottom: 15px; 
+                padding-bottom: 8px; 
+                border-bottom: 2px solid #e0e0e0; 
+                page-break-after: avoid;
+            }
+            h3 { 
+                font-size: 12pt; 
+                font-weight: bold; 
+                margin-top: 20px; 
+                margin-bottom: 12px; 
+                page-break-after: avoid;
+            }
+            p { 
+                margin-bottom: 15px; 
+                margin-top: 0; 
+                text-align: justify; 
+                line-height: 1.8; 
+                orphans: 3; 
+                widows: 3; 
+            }
+            ul, ol { 
+                margin-left: 30px; 
+                margin-top: 10px; 
+                margin-bottom: 20px; 
+                padding-left: 20px; 
+                page-break-inside: avoid;
+            }
+            li { 
+                margin-bottom: 8px; 
+                line-height: 1.7; 
+            }
+            strong { 
+                font-weight: 600; 
+            }
+            a { 
+                color: #0066cc; 
+                text-decoration: none; 
+            }
+            hr { 
+                display: none; 
+            }
+        }
+        body { 
+            font-family: 'Times New Roman', Times, serif; 
+            line-height: 1.8; 
+            max-width: 100%; 
+            margin: 0; 
+            padding: 0;
+            font-size: 12pt;
+            color: #000;
+        }
+        h1 { text-align: center; color: #000; font-size: 18pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-top: 0; }
+        h2 { color: #000; font-size: 14pt; margin-top: 30px; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; }
+        h3 { color: #333; font-size: 12pt; }
+        p { text-align: justify; margin-bottom: 15px; }
+        ul, ol { margin-bottom: 20px; }
+        hr { display: none; }
+    </style>
+</head>
+<body>
+${contractOutput.innerHTML}
+</body>
+</html>`;
+            
+            // Create hidden iframe for printing
+            const printFrame = document.createElement('iframe');
+            printFrame.style.position = 'fixed';
+            printFrame.style.right = '0';
+            printFrame.style.bottom = '0';
+            printFrame.style.width = '0';
+            printFrame.style.height = '0';
+            printFrame.style.border = '0';
+            document.body.appendChild(printFrame);
+            
+            printFrame.contentDocument.write(printContent);
+            printFrame.contentDocument.close();
+            
+            printFrame.onload = function() {
+                setTimeout(function() {
+                    printFrame.contentWindow.print();
+                    setTimeout(function() {
+                        document.body.removeChild(printFrame);
+                    }, 1000);
+                }, 500);
+            };
+        }
+
+        function downloadDOCX() {
+            const contractOutput = document.querySelector('.contract-output');
+            if (!contractOutput) return;
+            closeDownloadDropdown();
+            
+            // Create HTML content for DOCX
+            const htmlContent = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' 
+                      xmlns:w='urn:schemas-microsoft-com:office:word' 
+                      xmlns='http://www.w3.org/TR/REC-html40'>
+                <head>
+                    <meta charset="utf-8">
+                    <title>${generatedContractType.replace('_', ' ').toUpperCase()}</title>
+                    <!--[if gte mso 9]>
+                    <xml>
+                        <w:WordDocument>
+                            <w:View>Print</w:View>
+                            <w:Zoom>100</w:Zoom>
+                        </w:WordDocument>
+                    </xml>
+                    <![endif]-->
+                    <style>
+                        body { font-family: 'Times New Roman', Times, serif; line-height: 1.6; font-size: 12pt; }
+                        h1 { text-align: center; color: #2c3e50; font-size: 18pt; }
+                        h2 { color: #2c3e50; font-size: 14pt; margin-top: 25px; }
+                        h3 { color: #34495e; font-size: 12pt; }
+                        p { text-align: justify; margin-bottom: 10px; }
+                        hr { display: none; }
+                    </style>
+                </head>
+                <body>
+                    ${contractOutput.innerHTML}
+                </body>
+                </html>`;
+            
+            const blob = new Blob(['\\ufeff', htmlContent], {
+                type: 'application/msword'
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${generatedContractType}_${Date.now()}.doc`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
