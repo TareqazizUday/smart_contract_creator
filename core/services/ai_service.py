@@ -172,8 +172,9 @@ class AIService:
                 contract_info['party1'] = party1_label
             if not contract_info.get('party2'):
                 contract_info['party2'] = party2_label
-            if not contract_info.get('start_date'):
-                contract_info['start_date'] = today_date
+            # Do NOT auto-fill start_date - let it remain empty so placeholder is used
+            # if not contract_info.get('start_date'):
+            #     contract_info['start_date'] = today_date
             
             if not contract_info.get('sections'):
                 default_sections = {}
@@ -206,7 +207,7 @@ If VALID, extract the following information and return ONLY a valid JSON object:
     "valid": true,
     "party1": "{party1_label} name (extract applicant name from prompt, or use 'Applicant' if not specified)",
     "party2": "{party2_label} name (extract institution/program name from prompt, or use 'Institution' if not specified)",
-    "start_date": "Application date in YYYY-MM-DD format (use '{today_date}' if not specified)",
+    "start_date": "Application date in YYYY-MM-DD format (extract from prompt if mentioned, else empty string '')",
     "party1_contact_name": "",
     "party1_contact_title": "",
     "party2_contact_name": "",
@@ -255,7 +256,7 @@ If VALID, extract the following information and return ONLY a valid JSON object:
     "valid": true,
     "party1": "{party1_label} name (extract from prompt, or use 'Landowner' if not specified)",
     "party2": "{party2_label} name (extract from prompt, or use 'Developer' if not specified)",
-    "start_date": "Agreement date in YYYY-MM-DD format (use '{today_date}' if not specified)",
+    "start_date": "Agreement date in YYYY-MM-DD format (extract from prompt if mentioned, else empty string '')",
     "signature_date": "Signature/execution date in YYYY-MM-DD format (extract from prompt if mentioned, else empty string)",
     "party1_contact_name": "",
     "party1_contact_title": "",
@@ -299,7 +300,7 @@ If VALID, extract the following information and return ONLY a valid JSON object:
     "valid": true,
     "party1": "{party1_label} name (extract from prompt, or use '(_____________)' if not specified)",
     "party2": "{party2_label} name (extract from prompt, or use '(_____________)' if not specified)",
-    "start_date": "Start date in YYYY-MM-DD format (use '{today_date}' if not specified)",
+    "start_date": "Start date in YYYY-MM-DD format (extract from prompt if mentioned, else empty string '')",
     "signature_date": "Signature/execution date in YYYY-MM-DD format (extract from prompt if mentioned, else empty string)",
     "party1_contact_name": "Contact person name for {party1_label} (if mentioned, else empty string)",
     "party1_contact_title": "Title/position for {party1_label} contact (if mentioned, else empty string)",
@@ -316,8 +317,8 @@ If INVALID, return:
 
 Return ONLY the JSON object."""
     
-    def _call_openai(self, prompt):
-        """Call OpenAI API"""
+    def _call_openai(self, prompt, system_messages=None):
+        """Call OpenAI API with optional system messages"""
         try:
             import openai
         except ImportError:
@@ -326,12 +327,18 @@ Return ONLY the JSON object."""
         openai_api_key = os.getenv("OPENAI_API_KEY")
         openai_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
         
+        # Build messages list
+        messages = []
+        if system_messages:
+            messages.extend(system_messages)
+        messages.append({"role": "user", "content": prompt})
+        
         try:
             try:
                 client = openai.OpenAI(api_key=openai_api_key)
                 completion = client.chat.completions.create(
                     model=openai_model,
-                    messages=[{"role": "user", "content": prompt}],
+                    messages=messages,
                     temperature=0
                 )
                 result = completion.choices[0].message.content
@@ -339,7 +346,7 @@ Return ONLY the JSON object."""
                 openai.api_key = openai_api_key
                 completion = openai.ChatCompletion.create(
                     model=openai_model,
-                    messages=[{"role": "user", "content": prompt}],
+                    messages=messages,
                     temperature=0
                 )
                 result = completion.choices[0].message["content"]
@@ -347,8 +354,8 @@ Return ONLY the JSON object."""
         except Exception as e:
             return None, f"Error calling OpenAI API: {str(e)}"
     
-    def _stream_openai(self, prompt):
-        """Stream OpenAI API responses"""
+    def _stream_openai(self, prompt, contract_type="service_agreement", additional_system_messages=None):
+        """Stream OpenAI API responses with optional additional system messages"""
         try:
             import openai
         except ImportError:
@@ -362,11 +369,36 @@ Return ONLY the JSON object."""
             yield json.dumps({"error": "OpenAI API key is not configured. Please set OPENAI_API_KEY in your .env file."})
             return
         
+        # Add system messages for contract generation
+        messages = []
+        
+        # Add any additional system messages passed (e.g., for translation)
+        if additional_system_messages:
+            messages.extend(additional_system_messages)
+        
+        # Critical system message for ALL contract types (only for contract generation, not translation)
+        if not additional_system_messages:  # Only add contract-specific messages if no custom messages provided
+            messages.append({
+                "role": "system",
+                "content": """CRITICAL RULES FOR ALL CONTRACT GENERATION:
+1. LANGUAGE: Generate the ENTIRE contract in PROFESSIONAL ENGLISH ONLY. Even if user provides Bengali/Hindi/mixed language requirements, translate EVERYTHING to English. No mixed languages allowed.
+2. GOVERNING LAW URLs: In the "GOVERNING LAW AND JURISDICTION" section, EVERY citation MUST have clickable HTML anchor tags with REAL URLs. Format: [<a href="ACTUAL_URL" target="_blank">Source: Act Name</a>]. NEVER write plain text citations like "[Source: Act Name]" - this is FORBIDDEN."""
+            })
+            
+            # Additional system message for NDA contracts to emphasize placeholder rule
+            if contract_type == "nda":
+                messages.append({
+                    "role": "system",
+                    "content": "You are generating an NDA contract. CRITICAL RULE: If the user requirements do NOT explicitly mention a duration (like '5 years', '3 years', etc.), you MUST use '(_____________) years' placeholder in the TIME PERIODS section. NEVER invent default durations. This is your PRIMARY obligation."
+                })
+        
+        messages.append({"role": "user", "content": prompt})
+        
         try:
             client = openai.OpenAI(api_key=openai_api_key)
             stream = client.chat.completions.create(
                 model=openai_model,
-                messages=[{"role": "user", "content": prompt}],
+                messages=messages,
                 temperature=0,
                 stream=True
             )
@@ -421,7 +453,25 @@ Return ONLY the JSON object."""
             if not openai_api_key:
                 return None, "OpenAI API key is not configured. Please set OPENAI_API_KEY in your .env file."
             
-            result, error = self._call_openai(consolidated_prompt)
+            # Build system messages for contract generation
+            system_messages = []
+            
+            # Critical system message for ALL contract types
+            system_messages.append({
+                "role": "system",
+                "content": """CRITICAL RULES FOR ALL CONTRACT GENERATION:
+1. LANGUAGE: Generate the ENTIRE contract in PROFESSIONAL ENGLISH ONLY. Even if user provides Bengali/Hindi/mixed language requirements, translate EVERYTHING to English. No mixed languages allowed.
+2. GOVERNING LAW URLs: In the "GOVERNING LAW AND JURISDICTION" section, EVERY citation MUST have clickable HTML anchor tags with REAL URLs. Format: [<a href="ACTUAL_URL" target="_blank">Source: Act Name</a>]. NEVER write plain text citations like "[Source: Act Name]" - this is FORBIDDEN."""
+            })
+            
+            # Additional system message for NDA contracts to emphasize placeholder rule
+            if contract_type == "nda":
+                system_messages.append({
+                    "role": "system",
+                    "content": "You are generating an NDA contract. CRITICAL RULE: If the user requirements do NOT explicitly mention a duration (like '5 years', '3 years', etc.), you MUST use '(_____________) years' placeholder in the TIME PERIODS section. NEVER invent default durations. This is your PRIMARY obligation."
+                })
+            
+            result, error = self._call_openai(consolidated_prompt, system_messages=system_messages)
             if error:
                 return None, error
             
@@ -471,7 +521,7 @@ Return ONLY the JSON object."""
                 yield json.dumps({"error": "OpenAI API key is not configured. Please set OPENAI_API_KEY in your .env file."})
                 return
             
-            for chunk in self._stream_openai(consolidated_prompt):
+            for chunk in self._stream_openai(consolidated_prompt, contract_type=contract_type):
                 yield chunk
         except Exception as e:
             yield json.dumps({"error": f"Error generating contract: {str(e)}"})
@@ -534,7 +584,11 @@ Generate the SOP now."""
             sections, section_descriptions, party1, party2, party1_label, party2_label, start_date, contract_type
         )
         
-        date_str = start_date.strftime('%B %d, %Y') if hasattr(start_date, 'strftime') else str(start_date)
+        # Format date - use placeholder if not provided
+        if hasattr(start_date, 'strftime'):
+            date_str = start_date.strftime('%B %d, %Y')
+        else:
+            date_str = str(start_date) if start_date else '(_____________)'
         
         # Special handling for developer_agreement to detect specific type
         developer_type_instruction = ""
@@ -551,7 +605,282 @@ Based on the USER REQUIREMENTS below, you MUST determine which specific agreemen
 
 ANALYZE the user requirements and generate the contract that matches the detected agreement type. Include appropriate sections, clauses, and structure for that specific type."""
         
-        base_prompt = f"""You are an expert legal contract writer specializing in {contract_type_name} under {jurisdiction_name} law. You draft comprehensive, professional, and legally sound contracts suitable for execution between parties.
+        # Special handling for NDA contracts
+        nda_type_instruction = ""
+        if contract_type == "nda":
+            nda_type_instruction = """
+⚠️ CRITICAL - NDA (NON-DISCLOSURE AGREEMENT) SPECIFIC FORMATTING RULES:
+
+**1. DURATION / TIME PERIODS SECTION - ABSOLUTE MANDATORY PLACEHOLDER RULE:**
+   - **⚠️ THIS IS THE MOST CRITICAL RULE FOR NDA CONTRACTS - APPLIES TO ALL DURATION MENTIONS**
+   - This section determines how long confidentiality obligations last
+   - You MUST analyze the user requirements WORD BY WORD to check if duration is mentioned
+   - **CRITICAL: This rule applies to BOTH "DURATION OF CONFIDENTIALITY" and "TIME PERIODS" section names**
+   
+   **STEP 1: Analyze User Requirements for Duration Keywords:**
+   - Look for: "years", "months", "duration", "period", "time", "৫ বছর", "3 years", "2 বছরের", etc.
+   - Check entire user prompt including Bengali/Banglish text
+   
+   **STEP 2: Apply Correct Rule Based on Analysis:**
+   
+   **IF DURATION IS MENTIONED (Keywords found):**
+   - Extract the exact duration value
+   - Convert to legal format: "five (5) years" or "three (3) years" or "two (2) years"
+   - Example: User says "5 years NDA" → "The obligations of confidentiality shall remain in effect for a period of five (5) years from the date of disclosure."
+   
+   **IF DURATION IS NOT MENTIONED (No keywords found):**
+   - YOU ABSOLUTELY MUST USE: "(_____________)" placeholder for ALL duration references
+   - ⚠️ FORBIDDEN VALUES: "5 years", "3 years", "2 years", "five (5) years", "three (3) years"
+   - Example: User says "NDA between Company A and Company B" (no duration mentioned) → "The obligations of confidentiality shall remain in effect for a period of (_____________) years from the date of disclosure."
+   
+   **TIME PERIODS SECTION - COMPREHENSIVE FORMAT WITH PLACEHOLDER:**
+   When duration is NOT mentioned, use this exact format:
+   ```
+   ## TIME PERIODS
+   
+   The obligations of confidentiality shall remain in effect for a period of (_____________) years from the date of disclosure. The nondisclosure provisions shall survive the termination of this Agreement. The duty to hold the Confidential Information in confidence shall remain until the information no longer qualifies as a trade secret or until written release by the Discloser, whichever occurs first.
+   ```
+   
+   When duration IS mentioned (e.g., "5 years"), use this format:
+   ```
+   ## TIME PERIODS
+   
+   The obligations of confidentiality shall remain in effect for a period of five (5) years from the date of disclosure. The nondisclosure provisions shall survive the termination of this Agreement. The duty to hold the Confidential Information in confidence shall remain until the information no longer qualifies as a trade secret or until written release by the Discloser, whichever occurs first.
+   ```
+   
+   **MUST INCLUDE in TIME PERIODS section:**
+   - Duration of confidentiality (with placeholder if not specified)
+   - Survival clause: "The nondisclosure provisions shall survive the termination of this Agreement"
+   - Trade secret clause: "The duty to hold the Confidential Information in confidence shall remain until the information no longer qualifies as a trade secret or until written release by the Discloser, whichever occurs first"
+   
+   **VERIFICATION CHECKLIST (Check before generating):**
+   ☑ Did I read the entire user requirements?
+   ☑ Did I search for duration keywords (years/months/period/time)?
+   ☑ Did I find ANY duration mentioned? (YES/NO)
+   ☑ If NO, did I use "(_____________) years" placeholder in TIME PERIODS section? (MUST BE YES)
+   ☑ If YES, did I use the exact duration mentioned? (MUST BE YES)
+   ☑ Did I include survival clause?
+   ☑ Did I include trade secret clause?
+   
+   **WRONG Examples (DO NOT GENERATE THESE):**
+   ❌ User prompt: "NDA between TechCorp and StartupXYZ" (no duration mentioned)
+   ❌ Generated TIME PERIODS: "...for a period of five (5) years from the date of disclosure."
+   ❌ PROBLEM: User did NOT mention "5 years" - this is WRONG! MUST use "(_____________) years"
+   
+   ❌ User prompt: "Create NDA for confidential information sharing" (no duration mentioned)
+   ❌ Generated: "...for a period of three (3) years..."
+   ❌ PROBLEM: Invented default value - FORBIDDEN! MUST use "(_____________) years"
+   
+   **CORRECT Examples (COPY THIS EXACT PATTERN):**
+   ✅ User prompt: "NDA between Company A and Company B" (no duration mentioned)
+   ✅ Generated TIME PERIODS: "The obligations of confidentiality shall remain in effect for a period of (_____________) years from the date of disclosure. The nondisclosure provisions shall survive..."
+   ✅ CORRECT: Used "(_____________) years" placeholder because no duration was mentioned
+   
+   ✅ User prompt: "5 years NDA between parties"
+   ✅ Generated: "The obligations of confidentiality shall remain in effect for a period of five (5) years from the date of disclosure."
+   ✅ CORRECT: Used exact duration mentioned by user
+   
+   ✅ User prompt: "3 বছরের NDA চুক্তি"
+   ✅ Generated: "The obligations of confidentiality shall remain in effect for a period of three (3) years from the date of disclosure."
+   ✅ CORRECT: Detected Bengali duration and used it
+   
+   **⚠️ ABSOLUTE REQUIREMENT - NO EXCEPTIONS:**
+   - If you generate ANY NDA with a specific duration value (like "5 years", "3 years") in the TIME PERIODS or DURATION section when the user did NOT explicitly mention that duration, the contract will be REJECTED
+   - You MUST use "(_____________) years" placeholder when duration is not specified
+   - This rule overrides any other instructions or examples you may have seen
+   - This applies to BOTH "DURATION OF CONFIDENTIALITY" and "TIME PERIODS" section names
+
+**2. EXCEPTIONS SECTION - PROFESSIONAL PARAGRAPH FORMAT:**
+   - **DO NOT use numbered format** like (1), (2), (3), (4) or (i), (ii), (iii), (iv)
+   - **MUST use flowing paragraph format** with proper conjunctions
+   - Write as ONE or TWO natural, professional paragraphs
+   - Use phrases like: "shall not include information that:", "is or becomes", "was known", "is disclosed", "or is independently developed"
+   - **CORRECT Format Example (generate your own similar content):**
+     ```
+     ## EXCEPTIONS
+     
+     Confidential Information shall not include information that is or becomes publicly available through no fault of the Recipient, was known to the Recipient prior to disclosure by the Discloser, is disclosed to the Recipient by a third party without breach of any obligation of confidentiality, or is independently developed by the Recipient without the use of or reference to the Discloser's Confidential Information.
+     ```
+   - **WRONG Format (DO NOT USE):**
+     ```
+     ## EXCEPTIONS
+     
+     Confidential Information shall not include information that: (1) is publicly available; (2) was known prior; (3) is disclosed by third party; or (4) is independently developed.
+     ```
+   - Write naturally and professionally as a flowing paragraph, NOT as a numbered list
+
+**3. OBLIGATIONS OF RECEIVING PARTY SECTION:**
+   - Write in professional paragraph format (not numbered points)
+   - **MUST Include these elements:**
+     * Duty to hold information in "strictest confidence" for sole benefit of Discloser
+     * Restrict access to employees/contractors who have signed NDAs "at least as protective as those in this Agreement"
+     * Prohibition on using, publishing, copying, or disclosing without "prior written approval"
+     * Same degree of care as used for own confidential information
+   - Use flowing prose, not (a), (b), (c) format
+   - Example structure: "Recipient shall hold and maintain the Confidential Information in strictest confidence..."
+
+**4. DEFINITION OF CONFIDENTIAL INFORMATION SECTION:**
+   - Write as comprehensive paragraphs (2-3 paragraphs recommended)
+   - **MUST Include these elements:**
+     * What constitutes confidential information (business plans, technical data, financial info, proprietary info, trade secrets)
+     * **CRITICAL: Labeling requirements** - "If Confidential Information is in written form, the Discloser shall label or stamp the materials with the word 'Confidential' or some similar warning"
+     * **CRITICAL: Oral disclosure confirmation** - "If Confidential Information is transmitted orally, the Discloser shall promptly provide writing indicating that such oral communication constituted Confidential Information"
+     * Commercial value clause
+   - Use phrases like "including but not limited to" within the paragraph
+   - Example: "For purposes of this Agreement, 'Confidential Information' shall include all information or material that has or could have commercial value..."
+
+**5. RETURN OF MATERIALS SECTION:**
+   - Write as professional paragraph (can be combined with Obligations section or separate)
+   - **MUST Include:**
+     * "Upon written request" or "immediately if Discloser requests it in writing"
+     * Return ALL records, notes, written, printed, or tangible materials
+     * Can include destruction certification requirement
+   - Example: "Recipient shall return to Discloser any and all records, notes, and other written, printed, or tangible materials in its possession pertaining to Confidential Information immediately if Discloser requests it in writing."
+
+**6. RELATIONSHIPS SECTION:**
+   - Write as short, clear paragraph
+   - **MUST State:** This Agreement does NOT create partnership, joint venture, or employment relationship
+   - Example: "Nothing contained in this Agreement shall be deemed to constitute either party a partner, joint venture or employee of the other party for any purpose."
+
+**7. NOTICE OF IMMUNITY SECTION (Trade Secret Protection):**
+   - Write as detailed paragraph or sub-section
+   - **MUST Include (if jurisdiction supports trade secret laws):**
+     * Notice that individual NOT held criminally/civilly liable for trade secret disclosure made:
+       - In confidence to government official or attorney for reporting suspected law violation
+       - In sealed court filings
+     * Whistleblower protection provisions
+     * Retaliation lawsuit protections
+   - Use legal language: "Employee is provided notice that an individual shall not be held criminally or civilly liable under any federal or state trade secret law..."
+   - Note: Include this section especially for employee NDAs or if jurisdiction has trade secret protection laws
+
+**8. REMEDIES FOR BREACH SECTION:**
+   - Write in paragraph format
+   - Include: injunctive relief (immediate court orders), monetary damages, legal costs and attorney fees, return of materials
+   - Use flowing prose connecting all remedies naturally
+
+**9. GENERAL PROVISIONS SECTION (NDA-Specific):**
+   - **MUST Include these sub-sections with sub-headers on NEW LINES:**
+     * **Severability**: If any provision invalid, remainder remains effective
+     * **Integration** (Entire Agreement): Complete understanding, supersedes all prior agreements, amendments must be in writing signed by both parties
+     * **Waiver**: Failure to exercise rights not a waiver of prior or subsequent rights
+     * **Assignment and Successors**: Agreement binding on representatives, assigns, and successors
+     * **Notices**: How parties communicate (if applicable)
+   - Each sub-section should be separate paragraph with bold sub-header on new line
+
+**10. GOVERNING LAW AND JURISDICTION SECTION (NDA-Specific):**
+   - **CRITICAL: For NDA contracts, this section MUST be simpler with clear paragraph format**
+   - **MUST Include with HTML anchor tags for clickable URLs:**
+     * Governing Law clause with clickable link
+     * Jurisdiction clause with clickable link
+     * Stamp Duty clause with clickable link (if applicable)
+     * Registration clause with clickable link (if applicable)
+   
+   **NDA FORMAT - Use sub-headers on NEW LINES:**
+   ```
+   ## GOVERNING LAW AND JURISDICTION
+   
+   **Governing Law**
+   
+   This Agreement shall be governed by and construed in accordance with the laws of Bangladesh. [<a href="http://bdlaws.minlaw.gov.bd/act-367.html" target="_blank">Source: Contract Act 1872</a>]
+   
+   **Jurisdiction**
+   
+   Any dispute arising out of or relating to this Agreement shall be subject to the exclusive jurisdiction of the courts of Bangladesh. [<a href="http://bdlaws.minlaw.gov.bd/act-86.html" target="_blank">Source: Code of Civil Procedure 1908</a>]
+   
+   **Stamp Duty**
+   
+   This Agreement shall be executed on non-judicial stamp paper of appropriate value as per the Stamp Act of Bangladesh. [<a href="http://bdlaws.minlaw.gov.bd/act-24.html" target="_blank">Source: Stamp Act 1899</a>]
+   
+   **Registration**
+   
+   This Agreement shall be registered with the appropriate Sub-Registrar's Office in Bangladesh as required under the Registration Act, 1908. [<a href="http://bdlaws.minlaw.gov.bd/act-87.html" target="_blank">Source: Registration Act 1908</a>]
+   ```
+   
+   **CRITICAL REQUIREMENTS:**
+   - Use sub-headers: **Governing Law**, **Jurisdiction**, **Stamp Duty**, **Registration**, etc.
+   - Each sub-section on NEW LINE with bold header
+   - ONE paragraph per sub-section (clean and concise)
+   - EVERY citation MUST have HTML anchor tag: `[<a href="URL" target="_blank">Source: Act Name</a>]`
+   - ❌ NEVER use plain text citations like `[Source: Act Name]` - MUST have clickable URL
+   - Keep each clause short and focused - avoid long run-on sentences
+   - Do NOT combine multiple laws in one paragraph
+
+⚠️ REMEMBER FOR NDA CONTRACTS:
+- Duration placeholder rule is MANDATORY - DO NOT invent default durations
+- NO numbered formats in Exceptions/Exclusions section - MUST be paragraph format
+- MUST include labeling requirements for written and oral confidential information
+- MUST include Relationships clause (no partnership/joint venture)
+- MUST include Notice of Immunity if applicable for jurisdiction
+- GOVERNING LAW section MUST use sub-headers with clean paragraph format
+- EVERY legal citation MUST have clickable HTML anchor tag with real URL
+- All sections should maintain professional flowing paragraph style
+"""
+        
+        # Add special emphasis for NDA contracts at the very beginning
+        nda_warning = ""
+        if contract_type == "nda":
+            nda_warning = """
+CRITICAL WARNING FOR NDA (NON-DISCLOSURE AGREEMENT)
+
+STEP 0: PRE-GENERATION ANALYSIS (DO THIS FIRST BEFORE GENERATING ANYTHING)
+
+BEFORE YOU WRITE A SINGLE WORD OF THE CONTRACT, ANALYZE THE USER REQUIREMENTS:
+
+**DURATION ANALYSIS (MANDATORY FIRST STEP):**
+1. Read the user requirements below carefully word-by-word
+2. Search for these keywords: "year", "years", "month", "months", "duration", "period", "time", "বছর", "মাস"
+3. Ask yourself: "Did the user mention ANY duration/time period?"
+4. If YES → Note the exact duration (e.g., "5 years", "3 months", "2 বছর")
+5. If NO → You MUST use "(_____________) years" placeholder in TIME PERIODS section
+
+**YOUR ANALYSIS RESULT:**
+- Duration mentioned? [YES/NO]
+- If YES, what duration? [Write exact value]
+- If NO, what will you use? [MUST write: "(_____________) years"]
+
+**CRITICAL RULE:**
+- The DEFAULT answer is "(_____________) years" - ONLY change this if user EXPLICITLY mentions a duration
+- If you cannot find clear duration keywords in user requirements, use "(_____________) years"
+- When in doubt, use "(_____________) years"
+
+ACTUAL GENERATION STARTS BELOW - REMEMBER YOUR ANALYSIS RESULT
+
+**TIME PERIODS / DURATION SECTION - ABSOLUTE MANDATORY RULE:**
+- You MUST check if the user mentioned a duration (years/months/period) in their requirements
+- IF user DID NOT mention duration → USE "(_____________) years" placeholder
+- IF user mentioned duration → USE that exact duration
+- ⚠️ NEVER EVER use default values like "5 years", "3 years", "2 years" unless user explicitly said so
+- This applies to BOTH "TIME PERIODS" and "DURATION OF CONFIDENTIALITY" section names
+- This rule is NON-NEGOTIABLE and overrides everything else
+
+**EXAMPLES TO FOLLOW EXACTLY:**
+❌ User: "NDA between Company A and B" (no duration) → Generated TIME PERIODS: "five (5) years" → WRONG! REJECTED!
+✅ User: "NDA between Company A and B" (no duration) → Generated TIME PERIODS: "(_____________) years" → CORRECT!
+✅ User: "5 years NDA" → Generated: "five (5) years" → CORRECT!
+
+**TIME PERIODS SECTION MUST INCLUDE:**
+1. Duration with placeholder if not specified: "(_____________) years"
+2. Survival clause: "The nondisclosure provisions shall survive the termination of this Agreement"
+3. Trade secret clause: "shall remain until information no longer qualifies as trade secret or until written release"
+
+**GOVERNING LAW AND JURISDICTION - FORMATTING RULE:**
+- MUST use sub-headers: **Governing Law**, **Jurisdiction**, **Stamp Duty**, **Registration**
+- Each sub-section on NEW LINE with bold header
+- ONE clean paragraph per sub-section
+- EVERY citation MUST have clickable URL: [<a href="URL" target="_blank">Source: Act Name</a>]
+- ❌ NEVER use plain text: [Source: Act Name] - MUST have <a href="URL">
+
+**VERIFICATION BEFORE GENERATING:**
+☑ I have read the user requirements completely
+☑ I have searched for duration keywords (years/months/period)
+☑ If no duration found → I will use "(_____________)" placeholder
+☑ If duration found → I will use that exact value
+
+END OF CRITICAL WARNING
+
+"""
+        
+        base_prompt = f"""{nda_warning}You are an expert legal contract writer specializing in {contract_type_name} under {jurisdiction_name} law. You draft comprehensive, professional, and legally sound contracts suitable for execution between parties.
 
 CRITICAL - CONTENT RELEVANCE AND STANDARDIZATION:
 - Generate RELEVANT content that is appropriate and standard for a {contract_type_name}
@@ -563,13 +892,21 @@ CRITICAL - CONTENT RELEVANCE AND STANDARDIZATION:
 - DO NOT include irrelevant clauses or content that does not belong in a {contract_type_name}
 - Use standard legal language and structures that are commonly found in professionally drafted {contract_type_name} contracts
 
-IMPORTANT - LANGUAGE HANDLING:
-- The user may provide requirements in ANY language (English, Bengali, Banglish, Hindi, or any other language)
+IMPORTANT - LANGUAGE HANDLING (CRITICAL - READ CAREFULLY):
+- The user may provide requirements in ANY language (English, Bengali, Banglish, Hindi, mixed languages, or any other language)
 - You MUST analyze and understand the requirements regardless of input language
-- You MUST ALWAYS generate the contract in PROFESSIONAL ENGLISH only
-- Extract all key information (names, amounts, dates, terms, conditions) from the input and convert to proper English
+- ⚠️ **CRITICAL: You MUST ALWAYS generate the ENTIRE contract in PROFESSIONAL ENGLISH ONLY**
+- **NO MIXING OF LANGUAGES**: Even if user provides Bengali/Hindi/mixed text, translate EVERYTHING to English
+- Extract all key information (names, amounts, dates, terms, conditions, descriptions, services, deliverables) from the input and convert to proper English
+- **Examples:**
+  * User writes: "Facebook বিজ্ঞাপন ব্যবস্থাপনা" → You write: "Facebook advertising management"
+  * User writes: "প্রচার কার্যক্রমের উপর নিয়মিত আপডেট" → You write: "Regular updates on campaign activities"
+  * User writes: "চূড়ান্ত রিপোর্ট জমা" → You write: "Final report submission"
+- **ABSOLUTE RULE**: The final contract document must be 100% in English - no Bengali, Hindi, or other language text should appear anywhere except in party names/addresses if provided that way
 
 {developer_type_instruction}
+
+{nda_type_instruction}
 
 {jurisdiction_instructions}
 
@@ -591,23 +928,33 @@ REQUIRED SECTIONS:
 {formatted_sections}
 
 PROFESSIONAL CONTRACT WRITING STANDARDS:
-1. **Formal Legal Language**: Use precise, formal legal terminology. Avoid casual language or abbreviations.
-2. **Comprehensive Clauses**: Each section should be detailed with multiple sub-clauses where appropriate. Use numbered sub-clauses (1., 2., 3.) within sections for clarity.
-3. **Specificity**: Be specific and detailed. Instead of vague terms, provide clear definitions and specifications.
-4. **Professional Structure**: 
+1. **Simple and Clear Language**: Use simple, clear, and standard legal terminology that is easy to understand. Avoid overly complex, archaic, or unnecessarily sophisticated legal jargon. Use common, standard words that are widely recognized in professional contracts. Keep the language professional but accessible.
+2. **Formal Legal Language**: Use precise, formal legal terminology. Avoid casual language or abbreviations.
+3. **Comprehensive Clauses**: Each section should be detailed with multiple sub-clauses where appropriate. Use numbered sub-clauses (1., 2., 3.) within sections for clarity.
+4. **Specificity**: Be specific and detailed. Instead of vague terms, provide clear definitions and specifications.
+5. **Professional Structure**: 
    - Use ## for main section headers
    - Use ### for sub-sections
    - Use numbered lists (1., 2., 3.) for sequential items
    - Use bullet points (-) only for non-sequential lists
-5. **Complete Information**: Include all relevant details such as:
+6. **Complete Information**: Include all relevant details such as:
    - Specific deliverables with acceptance criteria
    - Detailed payment schedules with exact amounts and dates
    - Clear timelines with milestones
    - Comprehensive service descriptions
    - Quality standards and performance metrics
-6. **Placeholder Usage - CRITICAL RULE**: 
+7. **Placeholder Usage - CRITICAL RULE**: 
    - **IF INFORMATION IS PROVIDED IN USER REQUIREMENTS**: Use the exact values mentioned by the user. Do NOT use placeholders for information that is explicitly provided.
    - **IF INFORMATION IS MISSING/NOT SPECIFIED**: You MUST use placeholder: (_____________)
+   
+   **⚠️ CRITICAL WARNING - ABSOLUTELY DO NOT INVENT DEFAULT VALUES:**
+   - NEVER use "30 days", "60 days", "90 days" for termination notice periods UNLESS USER EXPLICITLY MENTIONS THEM
+   - NEVER use "5 years", "3 years", "2 years" for confidentiality duration UNLESS USER EXPLICITLY MENTIONS THEM
+   - NEVER use "30 days", "15 days", "7 days" for cure periods UNLESS USER EXPLICITLY MENTIONS THEM
+   - NEVER assume any time periods, durations, or numeric values
+   - IF NOT EXPLICITLY STATED IN USER REQUIREMENTS → MUST USE (_____________) PLACEHOLDER
+   - ONLY use specific numeric values when USER REQUIREMENTS EXPLICITLY STATE THEM IN CLEAR WORDS
+   
    - **NEVER make up or invent values** - if information is not provided in user requirements, use (_____________)
    - **NEVER use generic defaults** like "30 days", "5 years", "$1000" unless explicitly mentioned in user requirements
    - **ALWAYS use (_____________) ONLY for missing/unspecified information:**
@@ -626,8 +973,8 @@ PROFESSIONAL CONTRACT WRITING STANDARDS:
      * If user does NOT specify duration: "The obligations of confidentiality shall survive for a period of (_____________) years"
    - DO NOT use generic placeholders like [Address], [Amount], [Date] - ALWAYS use (_____________) format
    - DO NOT assume or generate default values - ONLY use (_____________) when information is truly missing from user requirements
-7. **Legal Precision**: Use terms like "shall" (not "will"), "herein", "thereof", "pursuant to", "in accordance with"
-8. **Completeness**: Ensure each section is comprehensive and covers all aspects that would be expected in a professional contract
+8. **Legal Precision**: Use terms like "shall" (not "will"), "herein", "thereof", "pursuant to", "in accordance with"
+9. **Completeness**: Ensure each section is comprehensive and covers all aspects that would be expected in a professional contract
 
 CRITICAL FORMATTING REQUIREMENTS - FOLLOW EXACTLY:
 
@@ -682,21 +1029,286 @@ CRITICAL FORMATTING REQUIREMENTS - FOLLOW EXACTLY:
       - Include parties: {party1} ({party1_label}) and {party2} ({party2_label})
       - Include effective date: {date_str}
       - Make it clean, professional, and appropriate for {jurisdiction_name} legal standards
-      - DO NOT use redundant definitions like "(this \"Agreement\")" or "(the \"Effective Date\")" in parentheses
-      - DO NOT repeat the word "Agreement" - for example, DO NOT write: "This Service Agreement ("Agreement")"
-      - Write simply: "This Service Agreement is made and entered into..." WITHOUT adding ("Agreement") after the title
-      - DO NOT include unnecessary lines like "referred to herein individually as a Party"
+      
+      **FOR NDA CONTRACTS - SPECIAL HEADER FORMAT:**
+      If generating an NDA (Non-Disclosure Agreement), write the header as ONE SINGLE flowing paragraph (not multiple lines):
+      
+      "This Non-Disclosure Agreement (the "Agreement") is entered into on (_____________) by and between {party1}, with a mailing address at (_____________), as the party disclosing confidential information (hereinafter referred to as the "Disclosing Party" or "Discloser"), and {party2}, with a mailing address at (_____________), as the party receiving confidential information (hereinafter referred to as the "Receiving Party" or "Recipient"). For the purpose of preventing the unauthorized disclosure of Confidential Information as defined below, the parties agree to enter into a confidential relationship concerning the disclosure of certain proprietary and confidential information."
+      
+      **Key Requirements for NDA Header:**
+      - MUST be ONE complete paragraph - NO line breaks between party information
+      - Start with "This Non-Disclosure Agreement (the "Agreement")"
+      - Use "as the party disclosing confidential information" and "as the party receiving confidential information"
+      - Include both short forms: "Disclosing Party" or "Discloser" AND "Receiving Party" or "Recipient"
+      - Include purpose statement at the end about confidential relationship
+      - Keep formatting clean and professional - avoid complex symbols
+      - Maintain formal legal tone throughout the single paragraph
+      
+      **FOR OTHER CONTRACTS - STANDARD FORMAT:**
+      Write the header as ONE flowing paragraph following this template:
+      
+      "This {contract_type_name} **(the "Agreement")** is entered into on this (_____________) **(the "Effective Date")**, by and between {party1}, with a mailing address at (_____________) **(hereinafter referred to as the "{party1_label}")**, and {party2}, with a mailing address at (_____________) **(hereinafter referred to as the "{party2_label}")**, collectively referred to as the **"Parties"**, both of whom hereby agree to be bound by the terms and conditions of this Agreement."
+      
+      **Key Requirements:**
+      - Must be ONE complete paragraph, not multiple lines
+      - Use "the Agreement" in all cases
+      - For date: If date is provided use it, otherwise use "(_____________)" placeholder
+      - Always include "**(the "Effective Date")**" after the date/placeholder - the parenthetical part must be bold
+      - Use "is entered into on this [date/placeholder]" format
+      - Use "with a mailing address at" for both parties
+      - For addresses: use "(_____________)" if not provided
+      - CRITICAL: All text within parentheses () must be wrapped in bold markdown (**text**)
+        * **(the "Agreement")** - bold
+        * **(the "Effective Date")** - bold
+        * **(hereinafter referred to as the "{party1_label}")** - bold
+        * **(hereinafter referred to as the "{party2_label}")** - bold
+        * **"Parties"** - bold (just the word Parties in quotes)
+      - End with "both of whom hereby agree to be bound by the terms and conditions of this Agreement"
+      - Maintain formal legal tone throughout
    
-   b) **RECITALS SECTION** (if appropriate for this contract type):
-      - Generate appropriate recitals/WHEREAS clauses based on contract type and context
-      - Make it relevant to the specific agreement between {party1} and {party2}
-      - Keep it professional and concise
+   b) **SERVICES SECTION**:
+      - Generate a brief "SERVICES" section that describes what services the Service Provider will provide
+      - Keep it concise (2-3 sentences) as an overview before detailed sections
+      - Format: "## SERVICES" header followed by description
+      - Example: "The Service Provider agrees to provide [describe services] to the Client in accordance with the terms and conditions set forth in this Agreement."
    
    c) **MAIN CONTENT SECTIONS**:
       - Generate all required sections from the REQUIRED SECTIONS list above
       - Use section headers (##) with proper formatting
       - Include all specific details from user requirements
       - Make each section comprehensive and detailed
+      
+      **SPECIAL FORMATTING FOR "SUPPORT & MAINTENANCE" SECTION:**
+      - Generate in ONE SINGLE professional paragraph (not multiple paragraphs or bullet lists)
+      - Include: support duration, types of support, response times, scope limitations
+      - **⚠️ CRITICAL - Duration Placeholder Rule (MUST FOLLOW STRICTLY):** 
+        * CAREFULLY READ user requirements word-by-word to check if support duration is mentioned
+        * IF user requirements EXPLICITLY mention support duration with specific time period (e.g., "30 days support", "৩০ দিনের সাপোর্ট", "3 months support", "90 days free support"), ONLY THEN use that exact value
+        * IF user requirements DO NOT mention any specific support duration, you MUST use "(_____________)" placeholder - DO NOT assume or invent any duration
+        * ⚠️ DO NOT use default values like "30 days", "60 days", "90 days" unless EXPLICITLY stated in user requirements
+        * Examples: 
+          - User says "30 days support" or "৩০ দিনের সাপোর্ট" → use "thirty (30) days"
+          - User does NOT mention duration → use "(_____________) days" or "(_____________)"
+      - Generate based on user requirements - DO NOT copy this example
+      - Format style (ONE PARAGRAPH - generate your own content):
+        ## SUPPORT & MAINTENANCE
+        
+        [Write a single flowing paragraph. For duration: CHECK user requirements carefully - if support duration explicitly mentioned, use exact value; if NOT mentioned at all, MUST use (_____________) placeholder. Include types of support covered, response times, and scope limitations. Generate natural, relevant content - do not copy this example text.]
+      
+      **SPECIAL FORMATTING FOR "TIMELINE" SECTION:**
+      - Generate in professional paragraph format based on user requirements
+      - If specific dates and milestones are provided in user requirements, use them with full details
+      - If dates/milestones are NOT provided, use placeholders with numbered list for milestones
+      - Include: commencement date, completion date, key milestones, delay provisions
+      - DO NOT copy these examples - generate your own content based on user requirements
+      - Format style when dates ARE provided:
+        ## TIMELINE
+        
+        [Write paragraph with actual dates from user requirements: commencement date, completion date, specific milestones with dates, and delay provisions.]
+      - Format style when dates are NOT provided:
+        ## TIMELINE
+        
+        The project shall commence on (_____________) and shall be completed by (_____________). The Service Provider shall adhere to the following milestones:
+        
+        1. (_____________)
+        2. (_____________)
+        3. (_____________)
+        
+        [Add sentence about delay provisions.]
+      
+      **SPECIAL FORMATTING FOR "INTELLECTUAL PROPERTY RIGHTS" SECTION:**
+      - Generate in ONE SINGLE professional paragraph (not multiple paragraphs)
+      - Include: ownership transfer, Service Provider retained rights (if any), Client usage rights, prior IP exclusions
+      - Generate based on user requirements - DO NOT copy this example
+      - Format style (ONE PARAGRAPH - generate your own content):
+        ## INTELLECTUAL PROPERTY RIGHTS
+        
+        [Write a single flowing paragraph covering: ownership of deliverables/work product, when ownership transfers, Service Provider's retained rights (if any), Client's usage rights, and treatment of pre-existing IP. Generate natural, relevant content based on the service/product described in user requirements.]
+      
+      **SPECIAL FORMATTING FOR "LIMITATION OF LIABILITY" SECTION:**
+      - Generate in professional flowing paragraph format (NO bullet points or (a), (b), (c) listings)
+      - Include: liability cap, exclusion of consequential damages, indemnification provisions
+      - Write everything in continuous paragraphs without using (a), (b), (c), (d) or (i), (ii), (iii), (iv)
+      - Generate based on user requirements - DO NOT copy this example
+      - Format style (FLOWING PARAGRAPHS - generate your own content):
+        ## LIMITATION OF LIABILITY
+        
+        [Paragraph 1: Write about liability cap and exclusion of consequential damages in flowing prose.]
+        
+        [Paragraph 2: Write about indemnification obligations in flowing prose.]
+        
+        [Paragraph 3: Write about exceptions to limitations in flowing prose.]
+      
+      **SPECIAL FORMATTING FOR "GENERAL PROVISIONS" SECTION:**
+      - Generate with sub-headers on NEW LINES (not inline bold labels)
+      - Each sub-header should be on its own line, followed by content paragraph below it
+      - Include: Entire Agreement, Amendments, Waiver, Severability, Assignment, Notices, Force Majeure, Counterparts
+      - Generate based on standard legal provisions - DO NOT copy these examples
+      - Format style (sub-headers on new lines - generate your own content):
+        ## GENERAL PROVISIONS
+        
+        **Entire Agreement**
+        
+        [Write paragraph about this being the entire agreement.]
+        
+        **Amendments**
+        
+        [Write paragraph about how amendments must be made.]
+        
+        **Waiver**
+        
+        [Write paragraph about waiver provisions.]
+        
+        **Severability**
+        
+        [Write paragraph about severability.]
+        
+        **Assignment**
+        
+        [Write paragraph about assignment restrictions.]
+        
+        **Notices**
+        
+        [Write paragraph about notice requirements.]
+        
+        **Force Majeure**
+        
+        [Write paragraph about force majeure events.]
+        
+        **Counterparts**
+        
+        [Write paragraph about counterparts execution.]
+      
+      **SPECIAL FORMATTING FOR "CONFIDENTIALITY" SECTION:**
+      - Generate with sub-headers on NEW LINES (not inline bold labels)
+      - Each sub-header should be on its own line, followed by content paragraph below it
+      - Include: Definition, Obligations, Exceptions, Duration
+      - Sub-headers should NOT use ## (that's for main section), just plain text or bold
+      - **CRITICAL - Duration Placeholder Rule:**
+        * IF user requirements specify confidentiality duration (e.g., "5 years", "3 years confidentiality"), use that exact value
+        * IF user requirements DO NOT specify confidentiality duration, use "(_____________)" placeholder
+        * ⚠️ DO NOT USE DEFAULT VALUES like "5 years", "3 years", "2 years" - these are FORBIDDEN unless user explicitly mentions them
+        * Examples: "five (5) years" ONLY if user says "5 years", otherwise "(_____________) years"
+      - Generate based on standard confidentiality provisions - DO NOT copy these examples
+      - Format style (sub-headers on new lines - generate your own content):
+        ## CONFIDENTIALITY
+        
+        **Definition**
+        
+        [Write paragraph defining what constitutes Confidential Information.]
+        
+        **Obligations**
+        
+        [Write paragraph about obligations to maintain confidentiality and protect information.]
+        
+        **Exceptions**
+        
+        [Write paragraph about exceptions to confidentiality obligations.]
+        
+        **Duration**
+        
+        [Write paragraph about duration of confidentiality obligations. IF user specifies duration, use exact value (e.g., "five (5) years"). IF NOT specified, use "(_____________) years" placeholder.]
+      
+      **SPECIAL FORMATTING FOR "TERMINATION" SECTION:**
+      - Generate with sub-headers on NEW LINES (not inline bold labels)
+      - Each sub-header should be on its own line, followed by content paragraph below it
+      - Include: For Convenience, For Cause, Effect of Termination
+      - **CRITICAL - Notice Period and Cure Period Placeholder Rules:**
+        * IF user requirements specify termination notice period (e.g., "30 days notice"), use that exact value
+        * IF user requirements DO NOT specify notice period, use "(_____________)" placeholder
+        * IF user requirements specify cure period for breach (e.g., "30 days to cure"), use that exact value
+        * IF user requirements DO NOT specify cure period, use "(_____________)" placeholder
+        * ⚠️ DO NOT USE DEFAULT VALUES like "30 days", "60 days", "15 days" - these are FORBIDDEN unless user explicitly mentions them
+        * Examples: "thirty (30) days" ONLY if user says "30 days", otherwise "(_____________) days"
+      - Generate based on standard termination provisions - DO NOT copy these examples
+      - Format style (sub-headers on new lines - generate your own content):
+        ## TERMINATION
+        
+        **For Convenience**
+        
+        [Write paragraph about termination for convenience. IF user specifies notice period, use exact value (e.g., "thirty (30) days"). IF NOT specified, use "(_____________) days" placeholder.]
+        
+        **For Cause**
+        
+        [Write paragraph about termination for cause/breach. IF user specifies cure period, use exact value. IF NOT specified, use "(_____________) days" placeholder for cure period.]
+        
+        **Effect of Termination**
+        
+        [Write paragraph about what happens upon termination: deliverables, payments, return of materials, etc.]
+      
+      **CRITICAL REQUIREMENT FOR "SCOPE OF WORK" AND "DELIVERABLES" SECTIONS:**
+      
+      **SCOPE OF WORK SECTION - MANDATORY FORMAT:**
+      - You MUST ALWAYS add exactly TWO (2) empty numbered items at the END of the "SCOPE OF WORK" section list
+      - These empty items are for users to fill in additional services later
+      - Continue the numbering sequence naturally from the last actual item
+      - CRITICAL: Each empty numbered item MUST contain the text "(_____________)" placeholder
+      - DO NOT leave the numbered items blank/empty - they MUST show the placeholder
+      - The format is: "5. (_____________)" and "6. (_____________)" (number, period, space, then placeholder)
+      - NO EXCEPTIONS - Every SCOPE OF WORK section MUST end with these 2 items containing placeholders
+      - CORRECT Example format:
+        ```
+        ## SCOPE OF WORK
+        
+        The Service Provider shall provide the following services to the Client:
+        
+        1. Requirement analysis and gathering.
+        2. Design and development of the mobile application.
+        3. Testing and quality assurance.
+        4. Deployment of the mobile application to the designated platform.
+        5. (_____________)
+        6. (_____________)
+        ```
+      - WRONG (DO NOT DO THIS): Do not create items "5." and "6." with no text after them
+      
+      **DELIVERABLES SECTION - MANDATORY FORMAT:**
+      - You MUST ALWAYS add exactly TWO (2) empty numbered items at the END of the "DELIVERABLES" section list
+      - These empty items are for users to fill in additional deliverables later
+      - Continue the numbering sequence naturally from the last actual item
+      - CRITICAL: Each empty numbered item MUST contain the text "(_____________)" placeholder
+      - DO NOT leave the numbered items blank/empty - they MUST show the placeholder
+      - The format is: "4. (_____________)" and "5. (_____________)" (number, period, space, then placeholder)
+      - NO EXCEPTIONS - Every DELIVERABLES section MUST end with these 2 items containing placeholders
+      - CORRECT Example format:
+        ```
+        ## DELIVERABLES
+        
+        The Service Provider shall deliver the following items to the Client:
+        
+        1. A fully functional mobile application developed in accordance with the specifications provided by the Client.
+        2. Documentation detailing the application features and user instructions.
+        3. Acceptance criteria shall be based on the successful completion of testing and approval by the Client.
+        4. (_____________)
+        5. (_____________)
+        ```
+      - WRONG (DO NOT DO THIS): Do not create items "4." and "5." with no text after them
+      
+      **PAYMENT SECTION - FLEXIBLE MILESTONE FORMAT:**
+      - When generating the "PAYMENT" or "PAYMENT / COMPENSATION" or "Payment / Compensation" section:
+        * If payment milestones/schedule are NOT specified in user requirements, use 3 placeholder milestones
+        * If user specifies milestones, use EXACTLY the number and details they provide (could be 2, 3, 4, 5, or any number of milestones)
+        * ADAPT to user's requirements - if they specify 5 milestones, generate all 5; if they specify 2, generate only 2
+        * Example when milestones NOT specified (default 3 placeholders):
+          ## PAYMENT / COMPENSATION
+          
+          The total cost for the services provided under this Agreement shall be $(_____________), payable in the following milestones:
+          
+          1. An initial payment of $(_____________) upon (_____________).
+          2. A second payment of $(_____________) upon (_____________).
+          3. A final payment of $(_____________) upon (_____________).
+          
+          All payments shall be made within (_____________) days of the completion of each milestone.
+        * Example when user specifies 3 milestones (use exact details):
+          ## PAYMENT / COMPENSATION
+          
+          The total cost for the services provided under this Agreement shall be $25,000, payable in the following milestones:
+          
+          1. An initial payment of $10,000 upon signing of this Agreement.
+          2. A second payment of $10,000 upon completion of the design phase.
+          3. A final payment of $5,000 upon delivery of the completed mobile application.
+          
+          All payments shall be made within fifteen (15) days of the completion of each milestone.
+        * If user specifies 5 milestones, generate all 5 with their exact amounts and conditions
    
    d) **STANDARD LEGAL CLAUSES**:
       Generate appropriate standard legal clauses including (but not limited to):
@@ -709,27 +1321,109 @@ CRITICAL FORMATTING REQUIREMENTS - FOLLOW EXACTLY:
       
       **REMINDER**: For CONFIDENTIALITY Duration and TERMINATION notice periods - IF specified in user requirements, use those exact values. IF NOT specified, MUST use (_____________) placeholder. DO NOT invent values.
    
-   e) **JURISDICTION-SPECIFIC CLAUSES**:
-      Based on {jurisdiction_name} jurisdiction, generate appropriate clauses for:
-      - Governing Law: {jurisdiction_instructions}
-      - Court Jurisdiction and Dispute Resolution
-      - Stamp Duty requirements (if applicable)
-      - Registration requirements (if applicable)
-      - Tax clauses (VAT/GST/other applicable taxes)
-      - Consumer Protection (if applicable)
-      - Data Protection (if applicable)
+   e) **JURISDICTION-SPECIFIC CLAUSES - "GOVERNING LAW AND JURISDICTION" SECTION**:
+      Based on {jurisdiction_name} jurisdiction, generate a section titled "## GOVERNING LAW AND JURISDICTION" that includes:
+      - Governing Law clause: {jurisdiction_instructions}
+      - Court Jurisdiction and Dispute Resolution clause
+      - Stamp Duty requirements clause (if applicable for {jurisdiction_name})
+      - Registration requirements clause (if applicable for {jurisdiction_name})
+      - Tax clauses (VAT/GST/other applicable taxes for {jurisdiction_name})
+      - Consumer Protection clause (if applicable for {jurisdiction_name})
+      - Data Protection clause (if applicable for {jurisdiction_name})
       - Any other jurisdiction-specific legal requirements
+      
+      **CRITICAL - INLINE CITATIONS WITH CLICKABLE LINKS FOR GOVERNING LAW AND JURISDICTION SECTION:**
+      
+      ⚠️ **MANDATORY REQUIREMENT - YOU MUST INCLUDE ACTUAL WORKING URLs IN EVERY CITATION**
+      
+      - For EACH statement/clause in the "GOVERNING LAW AND JURISDICTION" section, you MUST add an inline citation with a REAL, WORKING, CLICKABLE link at the END of that statement
+      - **IMPORTANT: Use HTML anchor tag format for PDF compatibility - HTML links work in PDF, markdown links do NOT**
+      - **CRITICAL: NEVER write citations without URLs like "[Source: Act Name]" - THIS IS WRONG!**
+      - **CRITICAL: EVERY citation MUST have <a href="ACTUAL_URL"> with a real web address**
+      
+      **CORRECT Citation Format (YOU MUST USE THIS EXACT FORMAT):**
+      ```
+      [<a href="ACTUAL_FULL_URL_HERE" target="_blank">Source: Act/Law Name</a>]
+      ```
+      
+      **WRONG Formats (DO NOT USE THESE - FORBIDDEN):**
+      ❌ [Source: Contract Act 1872] - NO URL, WRONG!
+      ❌ [Source: <a>Contract Act 1872</a>] - NO href attribute, WRONG!
+      ❌ [<a href="#">Source: Contract Act 1872</a>] - Placeholder URL, WRONG!
+      
+      **CORRECT Examples with REAL URLs (COPY THIS EXACT STYLE):**
+      
+      ✅ Bangladesh Example:
+      "This Agreement shall be governed by and construed in accordance with the laws of Bangladesh. [<a href="http://bdlaws.minlaw.gov.bd/act-367.html" target="_blank">Source: Contract Act 1872</a>]"
+      
+      ✅ Another Bangladesh Example:
+      "Any dispute arising out of or relating to this Agreement shall be subject to the exclusive jurisdiction of the courts of Bangladesh. [<a href="http://bdlaws.minlaw.gov.bd/act-86.html" target="_blank">Source: Code of Civil Procedure 1908</a>]"
+      
+      ✅ Stamp Duty Example:
+      "This Agreement shall be executed on non-judicial stamp paper of appropriate value as per the Stamp Act of Bangladesh. [<a href="http://bdlaws.minlaw.gov.bd/act-24.html" target="_blank">Source: Stamp Act 1899</a>]"
+      
+      ✅ Registration Example:
+      "This Agreement shall be registered with the appropriate Sub-Registrar's Office in Bangladesh. [<a href="http://bdlaws.minlaw.gov.bd/act-87.html" target="_blank">Source: Registration Act 1908</a>]"
+      
+      ✅ VAT Example:
+      "All applicable Value Added Tax (VAT) shall be payable as per the provisions of this Agreement. [<a href="https://www.vat.gov.bd/" target="_blank">Source: VAT Act 1991</a>]"
+      
+      ✅ Consumer Protection Example:
+      "This Agreement is subject to the provisions of the Consumer Rights Protection Act, 2009 of Bangladesh. [<a href="http://bdlaws.minlaw.gov.bd/act-1007.html" target="_blank">Source: Consumer Rights Protection Act 2009</a>]"
+      
+      **URL Sources by Jurisdiction:**
+      
+      **Bangladesh URLs (USE THESE EXACT URLs):**
+      - Contract Act 1872: http://bdlaws.minlaw.gov.bd/act-367.html
+      - Code of Civil Procedure 1908: http://bdlaws.minlaw.gov.bd/act-86.html
+      - Stamp Act 1899: http://bdlaws.minlaw.gov.bd/act-24.html
+      - Registration Act 1908: http://bdlaws.minlaw.gov.bd/act-87.html
+      - VAT Act 1991: https://www.vat.gov.bd/
+      - Consumer Rights Protection Act 2009: http://bdlaws.minlaw.gov.bd/act-1007.html
+      - Main legal database: http://bdlaws.minlaw.gov.bd/
+      
+      **India URLs:**
+      - Use: https://legislative.gov.in/ or https://www.indiacode.nic.in/
+      - Example: Indian Contract Act 1872: https://legislative.gov.in/actsofparliamentfromtheyear/indian-contract-act-1872
+      
+      **UK URLs:**
+      - Use: https://www.legislation.gov.uk/
+      - Example: Consumer Rights Act 2015: https://www.legislation.gov.uk/ukpga/2015/15
+      
+      **USA URLs:**
+      - Use: https://www.law.cornell.edu/uscode/text
+      - Example: Uniform Commercial Code: https://www.law.cornell.edu/ucc
+      
+      **IMPLEMENTATION RULES:**
+      1. Add citation immediately after the period/full stop of each statement
+      2. Each statement MUST have its own citation with link - do NOT group multiple statements under one citation
+      3. EVERY citation MUST include the complete <a href="URL" target="_blank"> tag structure
+      4. The URL MUST be a real, working web address - NOT a placeholder
+      5. Use the authoritative legal reference website for the jurisdiction
+      6. If you don't have the exact law URL, use the main legal database URL for that country
+      7. Format MUST be: [<a href="FULL_WORKING_URL" target="_blank">Source: Act Name</a>]
+      
+      **VERIFICATION CHECKLIST - BEFORE GENERATING, CONFIRM:**
+      ☑ Every citation has <a href="..."> tag? 
+      ☑ Every href has a REAL URL starting with http:// or https://?
+      ☑ Every citation has target="_blank"?
+      ☑ Every citation is wrapped in brackets [...]?
+      ☑ No plain text citations like [Source: Act Name]?
+      
+      **⚠️ ABSOLUTE REQUIREMENT: If you generate ANY citation without a complete HTML anchor tag with real URL, the contract will be REJECTED. You MUST include working URLs in EVERY single citation.**
 
    **IMPORTANT**: Generate all content naturally using your expertise. Do NOT use hard-coded templates or fixed phrases. Create professional, context-appropriate content for each section based on the contract type, parties, and requirements.
 
-**IMPORTANT - DO NOT GENERATE SIGNATURE BLOCKS:**
-- Do NOT include "## SIGNATURES" section
-- Do NOT create signature blocks
-- Do NOT add signature lines or signature placeholders
-- Do NOT include any closing statements like "This Agreement is executed as of the date first above written." or similar execution statements
-- Do NOT add any text after the jurisdiction-specific clauses and general provisions
-- End your contract immediately after the jurisdiction-specific clauses and general provisions - nothing else should follow
-- The signature section will be added separately after generation
+**⚠️ CRITICAL - ABSOLUTELY DO NOT GENERATE THESE SECTIONS:**
+- ❌ DO NOT include "## SIGNATURES" section anywhere - it will be added separately after generation
+- ❌ DO NOT include "## REFERENCES" section anywhere in the contract - FORBIDDEN
+- ❌ DO NOT create any references list, bibliography, or legal references section at the end
+- ❌ DO NOT add "The following legal references..." or similar text
+- ❌ DO NOT create signature blocks or signature lines
+- ❌ DO NOT include any closing statements like "This Agreement is executed as of the date first above written."
+- ✅ END your contract immediately after the "## GOVERNING LAW AND JURISDICTION" section
+- ✅ The LAST section you generate MUST be "## GOVERNING LAW AND JURISDICTION" - nothing should follow it
+- ✅ All legal references should ONLY be inline citations within the "GOVERNING LAW AND JURISDICTION" section with clickable HTML links
 
 5. **Visual Structure**:
    - Headers and content MUST be separated by blank lines
@@ -925,11 +1619,12 @@ Dispute Resolution: {jurisdiction_rules.get('dispute_resolution', 'Courts of the
         # Support both language codes and full names
         language_names = {
             'en': 'English',
-            'bn': 'Bengali (Bangla)',
+            'bn': 'Bengali',
+            'bangla': 'Bengali',
             'hi': 'Hindi',
             'ar': 'Arabic',
             'english': 'English',
-            'bengali': 'Bengali (Bangla)',
+            'bengali': 'Bengali',
             'hindi': 'Hindi',
             'arabic': 'Arabic'
         }
@@ -937,6 +1632,8 @@ Dispute Resolution: {jurisdiction_rules.get('dispute_resolution', 'Courts of the
         # Normalize the input (lowercase for matching)
         target_lang_key = target_language.lower().strip()
         target_lang_name = language_names.get(target_lang_key, target_language)
+        
+        print(f"[TRANSLATE] Input language: '{target_language}' -> Target: '{target_lang_name}'")
         
         try:
             openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -1005,6 +1702,36 @@ Dispute Resolution: {jurisdiction_rules.get('dispute_resolution', 'Courts of the
                     else:
                         # Last resort: append at end if signature section not found
                         print(f"[TRANSLATE] WARNING: Could not find signature section, signature may be missing")
+            
+            # VALIDATION: Check if critical elements are preserved
+            print(f"[TRANSLATE] Running post-translation validation...")
+            validation_issues = []
+            
+            # Check if HTML anchor tags are preserved
+            original_links = re.findall(r'<a\s+href="[^"]+"\s+target="_blank">', text, re.IGNORECASE)
+            translated_links = re.findall(r'<a\s+href="[^"]+"\s+target="_blank">', translated, re.IGNORECASE)
+            if len(original_links) != len(translated_links):
+                validation_issues.append(f"Link count mismatch: {len(original_links)} original vs {len(translated_links)} translated")
+                print(f"[TRANSLATE] WARNING: {validation_issues[-1]}")
+            
+            # Check if placeholders are preserved
+            original_placeholders = text.count("(_____________)")
+            translated_placeholders = translated.count("(_____________)")
+            if original_placeholders != translated_placeholders:
+                validation_issues.append(f"Placeholder count mismatch: {original_placeholders} original vs {translated_placeholders} translated")
+                print(f"[TRANSLATE] WARNING: {validation_issues[-1]}")
+            
+            # Check if base64 image data is preserved
+            original_images = re.findall(r'src="data:image/[^"]+?"', text, re.IGNORECASE)
+            translated_images = re.findall(r'src="data:image/[^"]+?"', translated, re.IGNORECASE)
+            if len(original_images) != len(translated_images):
+                validation_issues.append(f"Image count mismatch: {len(original_images)} original vs {len(translated_images)} translated")
+                print(f"[TRANSLATE] WARNING: {validation_issues[-1]}")
+            
+            if validation_issues:
+                print(f"[TRANSLATE] Translation completed with {len(validation_issues)} validation warnings")
+            else:
+                print(f"[TRANSLATE] Translation validated successfully - all critical elements preserved")
             
             print(f"[TRANSLATE] Translation completed ({len(translated)} chars)")
             return translated.strip(), None
@@ -1086,11 +1813,12 @@ Dispute Resolution: {jurisdiction_rules.get('dispute_resolution', 'Courts of the
         # Support both language codes and full names
         language_names = {
             'en': 'English',
-            'bn': 'Bengali (Bangla)',
+            'bn': 'Bengali',
+            'bangla': 'Bengali',
             'hi': 'Hindi',
             'ar': 'Arabic',
             'english': 'English',
-            'bengali': 'Bengali (Bangla)',
+            'bengali': 'Bengali',
             'hindi': 'Hindi',
             'arabic': 'Arabic'
         }
@@ -1098,6 +1826,8 @@ Dispute Resolution: {jurisdiction_rules.get('dispute_resolution', 'Courts of the
         # Normalize the input (lowercase for matching)
         target_lang_key = target_language.lower().strip()
         target_lang_name = language_names.get(target_lang_key, target_language)
+        
+        print(f"[STREAM TRANSLATE] Input language: '{target_language}' -> Target: '{target_lang_name}'")
         
         try:
             openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -1116,31 +1846,65 @@ Dispute Resolution: {jurisdiction_rules.get('dispute_resolution', 'Courts of the
                 text = text.replace(match.group(0), placeholder, 1)
             
             # Build translation prompt
-            translation_prompt = f"""You are a professional legal translator. Translate the following legal contract document to {target_lang_name} while maintaining perfect formatting and legal accuracy.
+            translation_prompt = f"""You are a professional legal translator specializing in legal contracts and agreements.
+
+⚠️ **CRITICAL INSTRUCTION - READ FIRST:**
+Your PRIMARY task is to translate this document to {target_lang_name}. The output MUST be in {target_lang_name}, NOT in English or any other language.
+
+Translate the following legal contract document to {target_lang_name} while maintaining PERFECT formatting and legal accuracy.
 
 CRITICAL TRANSLATION RULES:
-1. PRESERVE ALL FORMATTING: Keep all markdown syntax (##, ###, **, -, etc.) exactly as they are
-2. MAINTAIN STRUCTURE: Keep all section headers, bullet points, numbered lists, and paragraph breaks
-3. LEGAL TERMINOLOGY: Use proper legal terminology in {target_lang_name}
-4. PRESERVE NAMES: Do NOT translate party names, dates, currency amounts, addresses
-5. HTML TAGS: Preserve ALL HTML tags, attributes, and inline styles EXACTLY as they are
-6. SIGNATURE IMAGES: CRITICAL - Preserve ALL signature images completely. Do NOT modify:
-   - Any <img> tags with src="data:image/..." (base64 encoded images)
-   - Any <div> tags containing signature images
-   - All inline styles (style="...") in signature sections
-   - Signature image URLs must remain EXACTLY as they are (do not translate or modify base64 data)
-7. FORMATTING: Maintain all spacing, line breaks, and indentation
-8. TONE: Use formal, professional legal language
-9. PLACEHOLDERS: Preserve all placeholders like (_____________) exactly as they are
+
+**1. TARGET LANGUAGE REQUIREMENT (HIGHEST PRIORITY):**
+   - The ENTIRE translated output MUST be in {target_lang_name}
+   - Translate ALL text content to {target_lang_name}
+   - Do NOT keep text in English unless it's in the "DO NOT TRANSLATE" list below
+   - Section headers, paragraphs, legal terms - EVERYTHING must be in {target_lang_name}
+
+**2. PRESERVE ALL FORMATTING:**
+   - Keep ALL markdown syntax EXACTLY as they are: ##, ###, **, -, 1., 2., etc.
+   - Maintain ALL section headers, bullet points, numbered lists, paragraph breaks
+   - Keep ALL blank lines between sections
+   - Preserve ALL indentation and spacing
+
+**3. DO NOT TRANSLATE THESE (KEEP AS-IS):**
+   - Party names (company names, person names) - KEEP ORIGINAL
+   - Dates in any format - KEEP ORIGINAL
+   - Currency amounts ($, ৳, ₹, etc.) - KEEP ORIGINAL
+   - Addresses - KEEP ORIGINAL
+   - Placeholder text: "(_____________)" - KEEP EXACTLY AS-IS
+   - Email addresses - KEEP ORIGINAL
+   - Phone numbers - KEEP ORIGINAL
+   - URLs and web links - KEEP ORIGINAL
+
+**4. HTML PRESERVATION (ABSOLUTELY CRITICAL):**
+   - Preserve ALL HTML tags EXACTLY: <div>, <img>, <a>, <p>, <span>, etc.
+   - Preserve ALL HTML attributes: style="...", src="...", href="...", target="...", etc.
+   - **SIGNATURE IMAGES**: Keep ALL <img> tags with src="data:image/..." base64 data COMPLETELY UNCHANGED
+   - **CLICKABLE LINKS**: Keep ALL <a href="..."> anchor tags EXACTLY as they are
+
+**5. LEGAL TERMINOLOGY:**
+   - Use proper, formal legal terminology in {target_lang_name}
+   - Maintain professional, formal tone throughout
 
 Document to translate:
 {text}
 
-Return ONLY the translated document with ALL formatting, HTML tags, and signature images preserved EXACTLY as they are. Do not add explanations."""
+⚠️ CRITICAL REMINDERS:
+1. Output language MUST be {target_lang_name} - NOT English
+2. Return ONLY the translated document in {target_lang_name}
+3. Preserve ALL formatting, HTML tags, URLs, and base64 image data EXACTLY as they appear
+4. Translate ALL text content to {target_lang_name} (except items in "DO NOT TRANSLATE" list)"""
             
-            # Stream the translation
+            # Build system message for translation
+            system_messages = [{
+                "role": "system",
+                "content": f"""You are a professional translator. CRITICAL RULE: You MUST translate the document to {target_lang_name}. The ENTIRE output must be in {target_lang_name}, NOT in English or any other language. This is your PRIMARY and ONLY task."""
+            }]
+            
+            # Stream the translation with system message
             accumulated_text = ""
-            for chunk_data in self._stream_openai(translation_prompt):
+            for chunk_data in self._stream_openai(translation_prompt, additional_system_messages=system_messages):
                 chunk_json = json.loads(chunk_data)
                 if "error" in chunk_json:
                     yield chunk_data
@@ -1167,11 +1931,12 @@ Return ONLY the translated document with ALL formatting, HTML tags, and signatur
         # Support both language codes and full names
         language_names = {
             'en': 'English',
-            'bn': 'Bengali (Bangla)',
+            'bn': 'Bengali',
+            'bangla': 'Bengali',
             'hi': 'Hindi',
             'ar': 'Arabic',
             'english': 'English',
-            'bengali': 'Bengali (Bangla)',
+            'bengali': 'Bengali',
             'hindi': 'Hindi',
             'arabic': 'Arabic'
         }
@@ -1180,10 +1945,18 @@ Return ONLY the translated document with ALL formatting, HTML tags, and signatur
         target_lang_key = target_language.lower().strip()
         target_lang_name = language_names.get(target_lang_key, target_language)
         
+        print(f"[TRANSLATE HTML] Input language: '{target_language}' -> Target: '{target_lang_name}'")
+        
         try:
             openai_api_key = os.getenv("OPENAI_API_KEY")
             if not openai_api_key:
                 return html_content, "OpenAI API key is required for translation. Please configure OPENAI_API_KEY in your environment."
+            
+            # Build system message for HTML translation
+            system_message = {
+                "role": "system",
+                "content": f"""You are a professional translator. CRITICAL RULE: You MUST translate the HTML content to {target_lang_name}. The ENTIRE output must be in {target_lang_name}, NOT in English. Preserve ALL HTML tags exactly."""
+            }
             
             # Build translation prompt for HTML content
             translation_prompt = f"""You are a professional translator. Translate the following HTML content to {target_lang_name} while preserving ALL HTML tags, attributes, styles, and structure EXACTLY as they are.
@@ -1203,9 +1976,11 @@ HTML content to translate:
 
 Return ONLY the translated HTML with the same structure, tags, and attributes. Only translate the text content. Do NOT wrap in markdown code blocks or add any markdown syntax."""
             
-            result, error = self._call_openai(translation_prompt)
+            result, error = self._call_openai(translation_prompt, system_messages=[system_message])
             if error:
                 return html_content, error
+            
+            print(f"[TRANSLATE HTML] Translation completed. Result length: {len(result)} chars")
             
             # Remove markdown code blocks if AI added them (```html ... ``` or ``` ... ```)
             result = result.strip()
@@ -1224,30 +1999,128 @@ Return ONLY the translated HTML with the same structure, tags, and attributes. O
     
     def _translate_single_chunk(self, text, target_lang_name):
         """Translate a single chunk of text"""
-        translation_prompt = f"""You are a professional legal translator. Translate the following legal contract document to {target_lang_name} while maintaining perfect formatting and legal accuracy.
+        print(f"[DEBUG TRANSLATE] Target language: {target_lang_name}")
+        print(f"[DEBUG TRANSLATE] Text length: {len(text)} chars")
+        print(f"[DEBUG TRANSLATE] First 200 chars: {text[:200]}")
+        
+        # Build system message for translation
+        system_message = {
+            "role": "system",
+            "content": f"""You are a professional translator. CRITICAL RULE: You MUST translate the document to {target_lang_name}. The ENTIRE output must be in {target_lang_name}, NOT in English or any other language. This is your PRIMARY and ONLY task."""
+        }
+        
+        translation_prompt = f"""You are a professional legal translator specializing in legal contracts and agreements. 
 
-CRITICAL TRANSLATION RULES:
-1. PRESERVE ALL FORMATTING: Keep all markdown syntax (##, ###, **, -, etc.) exactly as they are
-2. MAINTAIN STRUCTURE: Keep all section headers, bullet points, numbered lists, and paragraph breaks
-3. LEGAL TERMINOLOGY: Use proper legal terminology in {target_lang_name}
-4. PRESERVE NAMES: Do NOT translate party names, dates, currency amounts, addresses
-5. HTML TAGS: Preserve ALL HTML tags, attributes, and inline styles EXACTLY as they are
-6. SIGNATURE IMAGES: CRITICAL - Preserve ALL signature images completely. Do NOT modify:
-   - Any <img> tags with src="data:image/..." (base64 encoded images)
-   - Any <div> tags containing signature images
-   - All inline styles (style="...") in signature sections
-   - Signature image URLs must remain EXACTLY as they are (do not translate or modify base64 data)
-7. FORMATTING: Maintain all spacing, line breaks, and indentation
-8. TONE: Use formal, professional legal language
+⚠️ **CRITICAL INSTRUCTION - READ FIRST:**
+Your PRIMARY task is to translate this document to {target_lang_name}. The output MUST be in {target_lang_name}, NOT in English or any other language.
+
+Translate the following legal contract document to {target_lang_name} while maintaining PERFECT formatting and legal accuracy.
+
+🚨 CRITICAL TRANSLATION RULES - FOLLOW EXACTLY:
+
+**1. TARGET LANGUAGE REQUIREMENT (HIGHEST PRIORITY):**
+   - The ENTIRE translated output MUST be in {target_lang_name}
+   - Translate ALL text content to {target_lang_name}
+   - Do NOT keep text in English unless it's in the "DO NOT TRANSLATE" list below
+   - Section headers, paragraphs, legal terms - EVERYTHING must be in {target_lang_name}
+
+**2. PRESERVE ALL FORMATTING (MANDATORY):**
+   - Keep ALL markdown syntax EXACTLY as they are: ##, ###, **, -, 1., 2., etc.
+   - Maintain ALL section headers, bullet points, numbered lists, paragraph breaks
+   - Keep ALL blank lines between sections
+   - Preserve ALL indentation and spacing
+   - Keep ALL bold/italic markers (**text**, *text*)
+
+**3. DO NOT TRANSLATE THESE (KEEP AS-IS):**
+   - ❌ Party names (company names, person names) - KEEP ORIGINAL
+   - ❌ Dates in any format - KEEP ORIGINAL
+   - ❌ Currency amounts ($, ৳, ₹, etc.) - KEEP ORIGINAL
+   - ❌ Addresses - KEEP ORIGINAL
+   - ❌ Placeholder text: "(_____________)" - KEEP EXACTLY AS-IS
+   - ❌ Email addresses - KEEP ORIGINAL
+   - ❌ Phone numbers - KEEP ORIGINAL
+   - ❌ URLs and web links - KEEP ORIGINAL
+   - ❌ Section reference markers like "## SECTION NAME" - translate only the section name, keep ## symbol
+
+**4. HTML PRESERVATION (ABSOLUTELY CRITICAL):**
+   - Preserve ALL HTML tags EXACTLY: <div>, <img>, <a>, <p>, <span>, etc.
+   - Preserve ALL HTML attributes: style="...", src="...", href="...", target="...", etc.
+   - Preserve ALL inline CSS styles completely unchanged
+   - **SIGNATURE IMAGES**: 
+     * Keep ALL <img> tags with src="data:image/..." base64 data COMPLETELY UNCHANGED
+     * Keep ALL <div> tags containing signature images COMPLETELY UNCHANGED
+     * Do NOT modify, shorten, or translate ANY part of base64 image data
+     * Do NOT translate text inside signature divs
+   - **CLICKABLE LINKS**:
+     * Keep ALL <a href="..."> anchor tags EXACTLY as they are
+     * Do NOT translate URLs inside href="..." attributes
+     * Do NOT modify target="_blank" or any other attributes
+     * Example: [<a href="http://example.com" target="_blank">Source: Act 1872</a>]
+       - Translate "Source: Act 1872" to target language
+       - Keep <a href="http://example.com" target="_blank"> and </a> EXACTLY as-is
+
+**5. LEGAL TERMINOLOGY:**
+   - Use proper, formal legal terminology in {target_lang_name}
+   - Maintain professional, formal tone throughout
+   - Use standard legal phrases used in {target_lang_name} legal documents
+   - Translate legal concepts accurately (e.g., "shall" → appropriate formal equivalent)
+
+**6. STRUCTURE PRESERVATION:**
+   - Keep ALL sections in same order
+   - Maintain ALL sub-sections and sub-headers
+   - Preserve ALL enumeration (1., 2., 3. or (a), (b), (c))
+   - Keep contract header format unchanged (only translate text, keep structure)
+
+**7. SPECIAL HANDLING:**
+   - "the Agreement" → translate but keep quote marks
+   - "the Parties" → translate but keep quote marks  
+   - Legal definitions in quotes → translate but maintain quotes
+   - Technical terms → use {target_lang_name} legal equivalent
+
+**EXAMPLES:**
+
+WRONG Translation (DO NOT DO THIS):
+```
+## পেমেন্ট
+মোট খরচ হবে ($_______) 
+[লিঙ্ক: আইন 1872] ❌ NO HREF!
+```
+
+CORRECT Translation (DO THIS):
+```
+## পেমেন্ট / ক্ষতিপূরণ
+মোট খরচ হবে $(_____________) 
+[<a href="http://bdlaws.minlaw.gov.bd/act-367.html" target="_blank">সূত্র: চুক্তি আইন ১৮৭২</a>] ✅ HREF PRESERVED!
+```
 
 Document to translate:
 {text}
 
-Return ONLY the translated document with ALL formatting, HTML tags, and signature images preserved EXACTLY as they are. Do not add explanations."""
+⚠️ CRITICAL REMINDERS:
+1. Output language MUST be {target_lang_name} - NOT English
+2. Return ONLY the translated document in {target_lang_name}
+3. Do NOT add any explanations, notes, or comments
+4. Preserve ALL formatting, HTML tags, URLs, links, and base64 image data EXACTLY as they appear
+5. Translate ALL text content to {target_lang_name} (except items in "DO NOT TRANSLATE" list)"""
         
-        result, error = self._call_openai(translation_prompt)
+        result, error = self._call_openai(translation_prompt, system_messages=[system_message])
         if error:
             return None, error
+        
+        # Remove markdown code blocks if AI added them
+        result = result.strip()
+        if result.startswith('```'):
+            # Remove opening ``` or ```markdown
+            lines = result.split('\n')
+            if lines[0].strip().startswith('```'):
+                lines = lines[1:]  # Remove first line
+            # Remove closing ```
+            if lines and lines[-1].strip() == '```':
+                lines = lines[:-1]  # Remove last line
+            result = '\n'.join(lines).strip()
+        
+        print(f"[DEBUG TRANSLATE] Translation completed. Result length: {len(result)} chars")
+        print(f"[DEBUG TRANSLATE] First 200 chars of result: {result[:200]}")
         return result.strip(), None
     
     def validate_legal_requirement(self, user_prompt, contract_type="service_agreement", jurisdiction="bangladesh"):

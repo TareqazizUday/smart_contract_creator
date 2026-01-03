@@ -25,8 +25,85 @@ def markdown_to_html(text):
             output_format='html5'
         )
         
-        # Post-process HTML to ensure proper spacing and formatting
+        # CRITICAL FIX: Python markdown escapes HTML tags by default for security
+        # We need to unescape our intentional anchor tags for legal citations
+        # so they remain clickable in PDFs
         import re
+        import html as html_module
+        
+        # Strategy 1: Unescape ALL anchor tag patterns comprehensively
+        # Handle all variations of escaped anchor tags (with more patterns)
+        
+        # Pattern 1: Standard escaped anchor with target="_blank" and brackets
+        # [&lt;a href=&quot;URL&quot; target=&quot;_blank&quot;&gt;Text&lt;/a&gt;]
+        html = re.sub(
+            r'\[&lt;a\s+href=&quot;([^&"]+)&quot;\s+target=&quot;_blank&quot;&gt;([^&<]+)&lt;/a&gt;\]',
+            r'[<a href="\1" target="_blank">\2</a>]',
+            html,
+            flags=re.IGNORECASE | re.DOTALL
+        )
+        
+        # Pattern 2: Escaped anchor without brackets
+        # &lt;a href=&quot;URL&quot; target=&quot;_blank&quot;&gt;Text&lt;/a&gt;
+        html = re.sub(
+            r'&lt;a\s+href=&quot;([^&"]+)&quot;\s+target=&quot;_blank&quot;&gt;([^&<]+)&lt;/a&gt;',
+            r'<a href="\1" target="_blank">\2</a>',
+            html,
+            flags=re.IGNORECASE | re.DOTALL
+        )
+        
+        # Pattern 3: Handle simple escaped anchor tags (no target)
+        # &lt;a href="URL"&gt;Text&lt;/a&gt;
+        html = re.sub(
+            r'&lt;a\s+href="([^"]+)"[^&]*&gt;([^&<]+)&lt;/a&gt;',
+            r'<a href="\1">\2</a>',
+            html,
+            flags=re.IGNORECASE | re.DOTALL
+        )
+        
+        # Pattern 4: Handle case where quotes might also be escaped with single quotes
+        # &lt;a href='URL' target='_blank'&gt;Text&lt;/a&gt;
+        html = re.sub(
+            r"&lt;a\s+href='([^']+)'\s+target='_blank'&gt;([^&<]+)&lt;/a&gt;",
+            r'<a href="\1" target="_blank">\2</a>',
+            html,
+            flags=re.IGNORECASE | re.DOTALL
+        )
+        
+        # Pattern 5: Handle escaped anchor with &amp;quot; (double escaped)
+        html = re.sub(
+            r'&lt;a\s+href=&amp;quot;([^&]+)&amp;quot;[^&]*&gt;([^&<]+)&lt;/a&gt;',
+            r'<a href="\1">\2</a>',
+            html,
+            flags=re.IGNORECASE | re.DOTALL
+        )
+        
+        # Strategy 2: Direct character replacement for remaining escaped HTML entities
+        # This ensures any remaining escaped characters are properly unescaped
+        replacements = [
+            ('&lt;a ', '<a '),
+            ('&lt;/a&gt;', '</a>'),
+            ('href=&quot;', 'href="'),
+            ('&quot; target=&quot;', '" target="'),
+            ('&quot;&gt;', '">'),
+            ('target=&quot;_blank&quot;', 'target="_blank"'),
+            ('&amp;quot;', '"'),  # Handle double-escaped quotes
+            ('&amp;lt;', '<'),    # Handle double-escaped <
+            ('&amp;gt;', '>'),    # Handle double-escaped >
+        ]
+        
+        for old, new in replacements:
+            html = html.replace(old, new)
+        
+        # Strategy 3: Final pass with html.unescape for any remaining entities
+        # But only for content that looks like links
+        if '&' in html and ('href' in html.lower() or 'http' in html.lower()):
+            try:
+                html = html_module.unescape(html)
+            except:
+                pass  # If unescape fails, continue with current HTML
+        
+        # Post-process HTML to ensure proper spacing and formatting
         # Add spacing after headers
         html = re.sub(r'(</h[1-6]>)', r'\1\n', html)
         # Ensure lists have proper spacing before and after

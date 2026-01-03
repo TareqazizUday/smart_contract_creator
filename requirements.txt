@@ -14,6 +14,7 @@ openai>=1.0.0                 # OpenAI API for legal validation and web search
 PyMuPDF>=1.23.0               # PDF manipulation (import as fitz)
 Pillow>=10.0.0                # Image processing (PIL)
 pdf2image>=1.16.0             # Convert PDF pages to images
+WeasyPrint>=60.0              # Server-side PDF generation with clickable links
 
 # Text & Markup Processing
 markdown>=3.5.0               # Markdown to HTML conversion

@@ -1627,18 +1627,25 @@
     <meta charset="UTF-8">
     <title>${generatedContractType.replace('_', ' ').toUpperCase()}</title>
     <style>
-            @media print {
+        @media print {
+            /* Page setup - A4 with proper margins */
             @page { 
                 margin: 20mm 15mm;
                 size: A4;
             }
+            
+            /* Cover page - no margins for centered design */
             @page :first {
                 margin: 0mm;
             }
+            
+            /* Preserve colors in print */
             * {
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
+            
+            /* Base body styles */
             body { 
                 margin: 0;
                 padding: 0;
@@ -1647,7 +1654,8 @@
                 font-size: 12pt;
                 color: #000;
             }
-            /* Cover page centering */
+            
+            /* Cover page - full page centered layout */
             div[style*="page-break-after: always"] {
                 display: flex !important;
                 flex-direction: column !important;
@@ -1660,29 +1668,35 @@
                 padding: 40px 20px !important;
                 box-sizing: border-box !important;
             }
-            /* Cover page inner container - center all content */
+            
+            /* Cover page inner container */
             div[style*="page-break-after: always"] > div {
                 text-align: center !important;
                 width: 100% !important;
                 max-width: 700px !important;
                 margin: 0 auto !important;
             }
+            
             /* Cover page - center all text elements */
             div[style*="page-break-after: always"] h1,
             div[style*="page-break-after: always"] p,
             div[style*="page-break-after: always"] div {
                 text-align: center !important;
             }
-            /* Cover page - center all nested divs and paragraphs */
+            
+            /* Cover page - center nested elements */
             div[style*="page-break-after: always"] div div,
             div[style*="page-break-after: always"] div p {
                 text-align: center !important;
             }
-            /* Content after cover page - add top padding */
+            
+            /* Content after cover page */
             div[style*="page-break-after: always"] + * {
                 margin-top: 0;
                 padding-top: 0;
             }
+            
+            /* Main heading (Contract Title) */
             h1 { 
                 font-size: 18pt; 
                 font-weight: bold; 
@@ -1691,54 +1705,171 @@
                 margin-top: 0; 
                 text-transform: uppercase; 
                 letter-spacing: 1px; 
-                page-break-after: avoid;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
             }
+            
+            /* Section headings (## in markdown) - CRITICAL: Keep with next content */
             h2 { 
                 font-size: 14pt; 
                 font-weight: bold; 
-                margin-top: 30px; 
-                margin-bottom: 15px; 
-                padding-bottom: 8px; 
-                border-bottom: 2px solid #e0e0e0; 
-                page-break-after: avoid;
+                margin-top: 25px; 
+                margin-bottom: 12px; 
+                padding-bottom: 6px; 
+                border-bottom: 2px solid #333; 
+                /* CRITICAL: Prevent heading from appearing alone at bottom of page */
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+                /* Keep heading with at least 2 lines of following content */
+                orphans: 2;
+                widows: 2;
             }
+            
+            /* CRITICAL: Keep h2 heading together with immediately following element */
+            h2 + * {
+                page-break-before: avoid !important;
+            }
+            
+            /* First h2 after content starts (not on cover page) */
+            div[style*="page-break-after: always"] ~ h2:first-of-type,
+            div[style*="page-break-after: always"] + * h2:first-of-type {
+                margin-top: 0;
+                padding-top: 10px;
+            }
+            
+            /* Sub-headings (### in markdown) - Keep with content */
             h3 { 
                 font-size: 12pt; 
                 font-weight: bold; 
-                margin-top: 20px; 
-                margin-bottom: 12px; 
-                page-break-after: avoid;
+                margin-top: 18px; 
+                margin-bottom: 10px; 
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
             }
+            
+            /* Keep h3 heading together with immediately following element */
+            h3 + * {
+                page-break-before: avoid !important;
+            }
+            
+            /* Paragraphs - justified text with proper spacing */
             p { 
-                margin-bottom: 15px; 
+                margin-bottom: 12px; 
                 margin-top: 0; 
                 text-align: justify; 
                 line-height: 1.8; 
                 orphans: 3; 
-                widows: 3; 
+                widows: 3;
             }
+            
+            /* First paragraph after heading - MUST stay with heading */
+            h2 + p,
+            h3 + p {
+                page-break-before: avoid !important;
+            }
+            
+            /* Lists - proper indentation and spacing */
             ul, ol { 
-                margin-left: 30px; 
-                margin-top: 10px; 
-                margin-bottom: 20px; 
-                padding-left: 20px; 
+                margin-left: 25px; 
+                margin-top: 8px; 
+                margin-bottom: 16px; 
+                padding-left: 15px;
+            }
+            
+            /* Lists after headings - MUST stay with heading */
+            h2 + ul,
+            h2 + ol,
+            h3 + ul,
+            h3 + ol {
+                page-break-before: avoid !important;
+            }
+            
+            /* List items */
+            li { 
+                margin-bottom: 6px; 
+                line-height: 1.7;
+                orphans: 2; 
+                widows: 2;
                 page-break-inside: avoid;
             }
-            li { 
-                margin-bottom: 8px; 
-                line-height: 1.7; 
+            
+            /* Keep first few list items together */
+            ul > li:first-child,
+            ol > li:first-child,
+            ul > li:nth-child(2),
+            ol > li:nth-child(2) {
+                page-break-after: avoid;
             }
-            strong { 
-                font-weight: 600; 
+            
+            /* Strong/Bold text */
+            strong, b { 
+                font-weight: 700; 
             }
+            
+            /* Links - visible and clickable */
             a { 
                 color: #0066cc; 
-                text-decoration: none; 
+                text-decoration: underline; 
             }
+            
+            /* Signature blocks - keep together */
+            div[style*="margin-top: 50px"],
+            div[style*="margin-top: 60px"] {
+                page-break-inside: avoid;
+                page-break-before: auto;
+            }
+            
+            /* Signature images */
+            img {
+                max-width: 100%;
+                height: auto;
+                page-break-inside: avoid;
+            }
+            
+            /* Tables - if any */
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 15px 0;
+                page-break-inside: avoid;
+            }
+            
+            table td, table th {
+                padding: 8px;
+                border: 1px solid #333;
+                text-align: left;
+            }
+            
+            /* Hide horizontal rules */
             hr { 
                 display: none; 
             }
+            
+            /* Better spacing between sections */
+            h2 + p,
+            h2 + ul,
+            h2 + ol {
+                margin-top: 12px;
+            }
+            
+            h3 + p,
+            h3 + ul,
+            h3 + ol {
+                margin-top: 8px;
+            }
+            
+            /* Avoid page breaks after headings */
+            h1, h2, h3, h4, h5, h6 {
+                page-break-after: avoid;
+            }
+            
+            /* Keep heading with next element */
+            h2, h3 {
+                page-break-inside: avoid;
+            }
         }
+        
+        /* Screen styles */
         body { 
             font-family: 'Times New Roman', Times, serif; 
             line-height: 1.8; 
@@ -1749,10 +1880,13 @@
             color: #000;
         }
         h1 { text-align: center; color: #000; font-size: 18pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-top: 0; }
-        h2 { color: #000; font-size: 14pt; margin-top: 30px; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; }
+        h2 { color: #000; font-size: 14pt; margin-top: 30px; border-bottom: 2px solid #333; padding-bottom: 8px; }
         h3 { color: #333; font-size: 12pt; }
-        p { text-align: justify; margin-bottom: 15px; }
-        ul, ol { margin-bottom: 20px; }
+        p { text-align: justify; margin-bottom: 15px; line-height: 1.8; }
+        ul, ol { margin-bottom: 20px; margin-left: 25px; }
+        li { margin-bottom: 6px; line-height: 1.7; }
+        a { color: #0066cc; text-decoration: underline; }
+        strong, b { font-weight: 700; }
         hr { display: none; }
     </style>
 </head>

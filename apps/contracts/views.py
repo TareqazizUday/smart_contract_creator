@@ -160,12 +160,14 @@ def index(request):
         
         print(f"[CONTRACT] Extraction successful - Party1: {party1}, Party2: {party2}")
         
-        # Parse start date
+        # Parse start date - if not provided, keep as empty string for placeholder
         try:
-            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            if start_date_str:
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            else:
+                start_date = ''  # Empty string will show placeholder in contract
         except (ValueError, TypeError):
-            start_date = datetime.today().date()
-            start_date_str = start_date.strftime('%Y-%m-%d')
+            start_date = ''  # Empty string will show placeholder in contract
         
         # Handle supplementary file(s) - multiple files allowed like Flask
         supplementary_text = None
@@ -368,11 +370,14 @@ def generate(request):
         start_date_str = contract_info.get('start_date')
         sections_data = contract_info.get('sections', {})
         
-        # Parse start date
+        # Parse start date - if not provided, keep as empty string for placeholder
         try:
-            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            if start_date_str:
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            else:
+                start_date = ''  # Empty string will show placeholder in contract
         except (ValueError, TypeError):
-            start_date = datetime.today().date()
+            start_date = ''  # Empty string will show placeholder in contract
         
         # Handle supplementary files (multiple files allowed)
         supplementary_text = None
@@ -471,11 +476,11 @@ def generate(request):
                             )
                             accumulated_text += signature_block
                             
-                            # Append references section if legal references are provided
-                            if legal_references and isinstance(legal_references, list) and len(legal_references) > 0:
-                                print(f"[CONTRACT] Streaming: Adding {len(legal_references)} references to contract")
-                                references_block = contract_service._generate_references_block(legal_references)
-                                accumulated_text += references_block
+                            # DO NOT append references section - references are now inline citations in GOVERNING LAW AND JURISDICTION section
+                            # if legal_references and isinstance(legal_references, list) and len(legal_references) > 0:
+                            #     print(f"[CONTRACT] Streaming: Adding {len(legal_references)} references to contract")
+                            #     references_block = contract_service._generate_references_block(legal_references)
+                            #     accumulated_text += references_block
                             
                             # Save to session (cover page + separator + contract content)
                             full_contract_md = (cover_page_html + separator + accumulated_text) if cover_page_html else accumulated_text

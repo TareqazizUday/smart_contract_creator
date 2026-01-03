@@ -41,10 +41,10 @@ class ContractService:
             )
             full_contract += signature_block
             
-            # Append references section if legal references are provided
-            if legal_references and isinstance(legal_references, list) and len(legal_references) > 0:
-                references_block = self._generate_references_block(legal_references)
-                full_contract += references_block
+            # DO NOT append references section - references are now inline citations in GOVERNING LAW AND JURISDICTION section
+            # if legal_references and isinstance(legal_references, list) and len(legal_references) > 0:
+            #     references_block = self._generate_references_block(legal_references)
+            #     full_contract += references_block
             
             return full_contract
 
@@ -118,11 +118,11 @@ class ContractService:
             party1_label = config.get('party1_label', 'Party 1')
             party2_label = config.get('party2_label', 'Party 2')
             
-            # Format date
+            # Format date - use placeholder if not provided
             if hasattr(start_date, 'strftime'):
                 date_str = start_date.strftime('%B %d, %Y')
             else:
-                date_str = str(start_date) if start_date else 'Date'
+                date_str = str(start_date) if start_date else '________________'
             
             # Get jurisdiction name
             try:
@@ -137,11 +137,7 @@ class ContractService:
     <div style="text-align: center; width: 100%; max-width: 700px; margin: 0 auto; padding: 0; box-sizing: border-box;">
         <div style="width: 100px; height: 3px; background: linear-gradient(to right, #2c3e50, #3498db); margin: 0 auto 30px; -webkit-print-color-adjust: exact; print-color-adjust: exact;"></div>
         
-        <h1 style="font-size: 36px; font-weight: 700; color: #2c3e50; margin: 0 0 15px 0; letter-spacing: 1.5px; text-transform: uppercase; line-height: 1.2; page-break-after: avoid;">{contract_type_name.upper()}</h1>
-        
-        <p style="font-size: 16px; color: #7f8c8d; margin: 0 0 40px 0; font-style: italic; letter-spacing: 0.5px; text-align: center;">Legal Document</p>
-        
-        <div style="width: 180px; height: 1.5px; background: #bdc3c7; margin: 0 auto 40px;"></div>
+        <h1 style="font-size: 36px; font-weight: 700; color: #2c3e50; margin: 0 0 40px 0; letter-spacing: 1.5px; text-transform: uppercase; line-height: 1.2; page-break-after: avoid;">{contract_type_name.upper()}</h1>
         
         <div style="margin: 0 0 35px 0; text-align: center; width: 100%; max-width: 550px; margin-left: auto; margin-right: auto;">
             <div style="margin-bottom: 25px; text-align: center;">
@@ -160,10 +156,6 @@ class ContractService:
             <p style="font-size: 18px; color: #2c3e50; margin: 0; font-weight: 400; text-align: center;">{date_str}</p>
         </div>
         
-        <div style="margin: 25px 0 0 0; text-align: center;">
-            <p style="font-size: 11px; color: #95a5a6; margin: 0; font-style: italic; text-align: center;">Governed by the laws of {jurisdiction_name}</p>
-        </div>
-        
         <div style="width: 100px; height: 3px; background: linear-gradient(to right, #3498db, #2c3e50); margin: 40px auto 0; -webkit-print-color-adjust: exact; print-color-adjust: exact;"></div>
     </div>
 </div>"""
@@ -171,20 +163,21 @@ class ContractService:
         except Exception as e:
             return ""
     
-    def _generate_references_block(self, references):
-        """Generate references section with legal reference URLs"""
-        references_md = "\n\n## REFERENCES\n\n"
-        references_md += "The following legal references and resources were consulted during the generation of this contract:\n\n"
-        
-        for ref in references:
-            title = ref.get('title', ref.get('url', 'Legal Reference'))
-            url = ref.get('url', '')
-            if url:
-                references_md += f"- [{title}]({url})\n"
-            else:
-                references_md += f"- {title}\n"
-        
-        return references_md
+    # DEPRECATED: References are now inline citations within GOVERNING LAW AND JURISDICTION section
+    # def _generate_references_block(self, references):
+    #     """Generate references section with legal reference URLs - DEPRECATED"""
+    #     references_md = "\n\n## REFERENCES\n\n"
+    #     references_md += "The following legal references and resources were consulted during the generation of this contract:\n\n"
+    #     
+    #     for ref in references:
+    #         title = ref.get('title', ref.get('url', 'Legal Reference'))
+    #         url = ref.get('url', '')
+    #         if url:
+    #             references_md += f"- [{title}]({url})\n"
+    #         else:
+    #             references_md += f"- {title}\n"
+    #     
+    #     return references_md
     
     def generate_full_contract_api(self, party1, party2, start_date, sections_data, user_prompt=None, 
                                    supplementary_text=None, template_text=None, 

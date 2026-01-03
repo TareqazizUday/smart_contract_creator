@@ -39,17 +39,25 @@ CONTRACT_CONFIGS = {
         "has_payment": False,
         "sections": [
             "Definition of Confidential Information",
-            "Non-Disclosure Obligations",
-            "Duration of Confidentiality",
-            "Exceptions",
-            "Remedies for Breach"
+            "Exclusions from Confidential Information",
+            "Obligations of Receiving Party",
+            "Time Periods",
+            "Return of Materials",
+            "Relationships",
+            "Remedies for Breach",
+            "Notice of Immunity",
+            "General Provisions"
         ],
         "section_descriptions": {
-            "Definition of Confidential Information": "What constitutes confidential information, including business plans, technical data, financial information, and proprietary information.",
-            "Non-Disclosure Obligations": "Obligations of the Recipient to maintain confidentiality, restrictions on use, and disclosure limitations.",
-            "Duration of Confidentiality": "How long the information must remain confidential (typically 2-5 years from the date of disclosure).",
-            "Exceptions": "Information that is not considered confidential, such as publicly available information, information already known, or information independently developed.",
-            "Remedies for Breach": "Consequences of violating the agreement, including injunctive relief, monetary damages, and legal costs."
+            "Definition of Confidential Information": "What constitutes confidential information including business plans, technical data, financial information, proprietary information, and trade secrets. Include requirements for marking written materials as 'Confidential' and providing written confirmation for oral disclosures.",
+            "Exclusions from Confidential Information": "Information that is NOT considered confidential: (a) publicly known at time of disclosure or subsequently becomes public through no fault of Recipient; (b) discovered or created by Recipient before disclosure; (c) learned through legitimate means other than from Discloser; or (d) disclosed with prior written approval.",
+            "Obligations of Receiving Party": "Recipient shall hold Confidential Information in strictest confidence for sole benefit of Discloser. Restrict access to employees/contractors with signed NDAs. Cannot use, publish, copy, or disclose without prior written approval. Must protect information with same degree of care as own confidential information.",
+            "Time Periods": "⚠️ CRITICAL: Duration of confidentiality obligations - MUST use (_____________) years placeholder if user does NOT explicitly mention duration in requirements. Nondisclosure provisions survive agreement termination. Duty to hold information in confidence remains until information no longer qualifies as trade secret or until written release by Discloser, whichever occurs first. ONLY use specific years (e.g., 'five (5) years') if user explicitly states duration like '5 years NDA' or '3 years confidentiality'. DEFAULT is (_____________) years.",
+            "Return of Materials": "Upon written request by Discloser, Recipient shall immediately return all records, notes, written, printed, or tangible materials pertaining to Confidential Information. Include destruction certification if applicable.",
+            "Relationships": "This Agreement does not constitute either party as partner, joint venture, or employee of the other party for any purpose. Clarify independent contractor relationship.",
+            "Remedies for Breach": "Consequences of violating the agreement including injunctive relief (immediate court orders), monetary damages, legal costs and attorney fees, and any other remedies available under law.",
+            "Notice of Immunity": "Notice that individuals are not held criminally or civilly liable under federal or state trade secret law for disclosure made: (i) in confidence to government officials or attorneys for reporting suspected law violations; or (ii) in sealed court filings. Include protections for whistleblowers and retaliation lawsuit provisions.",
+            "General Provisions": "Include: Severability (if one provision invalid, remainder remains effective), Integration/Entire Agreement (complete understanding, supersedes prior agreements), Waiver (failure to exercise rights not a waiver), Amendment (must be in writing signed by both parties), Assignment and Successors (binding on representatives and successors), Notices (how parties communicate)."
         },
         "examples": [
             "A startup shares its business idea with an investor",
